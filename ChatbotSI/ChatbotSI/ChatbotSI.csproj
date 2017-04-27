@@ -55,7 +55,43 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Page Include="ChatBoxView.xaml">
+    <Compile Include="ChatbotDialogueView.xaml.cs">
+      <DependentUpon>ChatbotDialogueView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ChatbotListView.xaml.cs">
+      <DependentUpon>ChatbotListView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ChatbotView.xaml.cs">
+      <DependentUpon>ChatbotView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="CreateChatbotWindow.xaml.cs">
+      <DependentUpon>CreateChatbotWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Qaib\AutoStatePredictor.cs" />
+    <Compile Include="Qaib\Corpus.cs" />
+    <Compile Include="Qaib\Couppy.cs" />
+    <Compile Include="Qaib\HybridStatePredictor.cs" />
+    <Compile Include="Qaib\Qaib.cs" />
+    <Compile Include="Qaib\RNN.cs" />
+    <Compile Include="Qaib\StatePredictor.cs" />
+    <Compile Include="Qaib\SymbolCorpus.cs" />
+    <Compile Include="Qaib\Translator.cs" />
+    <Compile Include="TrainView.xaml.cs">
+      <DependentUpon>TrainView.xaml</DependentUpon>
+    </Compile>
+    <Page Include="ChatbotDialogueView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="ChatbotListView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="ChatbotView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="CreateChatbotWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -67,13 +103,14 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="ChatBoxView.xaml.cs">
-      <DependentUpon>ChatBoxView.xaml</DependentUpon>
-    </Compile>
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Page Include="TrainView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs">

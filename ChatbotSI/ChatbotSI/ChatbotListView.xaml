@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="ChatbotSI.ChatBoxView"
+﻿<UserControl x:Class="ChatbotSI.ChatbotListView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
@@ -7,9 +7,12 @@
              mc:Ignorable="d" 
              d:DesignHeight="300" d:DesignWidth="300">
     <Grid>
-        <ScrollViewer>
-            
-            <StackPanel Orientation="Vertical" />
-        </ScrollViewer>
+        <DockPanel Background="LightBlue">
+            <Label Content="Available Chatbots" DockPanel.Dock="Top" />
+
+            <Button Content="Create new Chatbot" DockPanel.Dock="Bottom" Click="CreateChatbot_Click" Margin="5" Height="30" />
+
+            <StackPanel x:Name="chatBotStackPanel" Orientation="Vertical" Background="LightCyan" />
+        </DockPanel>
     </Grid>
 </UserControl>
