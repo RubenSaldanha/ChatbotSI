@@ -39,7 +39,7 @@ namespace ChatbotSI
         public Couppy(int layers)
         {
             int symbolSize = Translator.SymbolCount;
-            int stateSize = 64;
+            int stateSize = 256;
 
             if (symbolSize > 256)
                 throw new NotImplementedException("Invalid symbol size, must be between 1 and 256");
@@ -55,18 +55,24 @@ namespace ChatbotSI
                 inputPredictors[i] = new HybridStatePredictor(inputPredictors[i-1].stateSize, inputPredictors[i - 1].stateSize);
         }
 
-        public void train(SymbolCorpus trainSet, double minutes)
+        public void StartTrain(SymbolCorpus trainSet)
         {
-            for (int i = 0; i < inputPredictors.Length; i++)
-            {
-                //Training sucessive layers
-                inputPredictors[i].train(trainSet, minutes/LayerCount);
+            inputPredictors[0].StartTrain(trainSet);
 
-                Console.WriteLine("Training for layer " + i + " finished with: ");
-                Console.WriteLine(inputPredictors[i].getDescription());
+            //for (int i = 0; i < inputPredictors.Length; i++)
+            //{
+            //    //Training sucessive layers
+            //    inputPredictors[i].train(trainSet, minutes/LayerCount);
 
-                trainSet = inputPredictors[i].process(trainSet).states;
-            }
+            //    Console.WriteLine("Training for layer " + i + " finished with: ");
+            //    Console.WriteLine(inputPredictors[i].getDescription());
+
+            //    trainSet = inputPredictors[i].process(trainSet).states;
+            //}
+        }
+        public void StopTrain()
+        {
+            inputPredictors[0].StopTrain();
         }
 
         public byte[] response(SymbolDialogue dialogue)

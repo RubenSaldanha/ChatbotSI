@@ -113,14 +113,15 @@ namespace ChatbotSI
             List<string> currentDialogue = new List<string>();
 
             //weak parser
+            Dialogue dialogueToAdd;
             for (int i = 1; i < lines.Length; i++)
             {
                 if (lines[i] == "")
                 {
                     //Conversation over
-                    Dialogue dialogToPush = new Dialogue();
-                    dialogToPush.entrances = currentDialogue.ToArray();
-                    dialogues.Add(dialogToPush);
+                    dialogueToAdd = new Dialogue();
+                    dialogueToAdd.entrances = currentDialogue.ToArray();
+                    dialogues.Add(dialogueToAdd);
 
                     currentDialogue.Clear();
 
@@ -131,6 +132,13 @@ namespace ChatbotSI
                 {
                     currentDialogue.Add(lines[i]);
                 }
+            }
+
+            if(currentDialogue.Count != 0)
+            {
+                dialogueToAdd = new Dialogue();
+                dialogueToAdd.entrances = currentDialogue.ToArray();
+                dialogues.Add(dialogueToAdd);
             }
 
             Console.WriteLine("Conversations Loaded: " + dialogues.Count);

@@ -1,28 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace ChatbotSI
-{ 
+{
     [Serializable()]
-    public class HybridStatePredictor
+    public class RestrictedStatePredictor
     {
-        public int lastLeapCount;
-        public double lastLeapIntensity
-        {
-            get { return lastLeapCount / (double)table.Length; }
-        }
-
         public int trainingDepth;
 
         public int symbolSize;
         public int stateSize;
 
-        public byte[] table;
+        public byte[] predictionTable;
         public short tableStride;
 
         public byte[] stateTransitionTable;
@@ -71,7 +63,7 @@ namespace ChatbotSI
             this.stateSize = stateSize;
 
             //Create table with input(symbolSize , stateSize) each with 2 entries ( prediction , newState )
-            table = new byte[symbolSize * stateSize * 2];
+            predictionTable = new byte[symbolSize * stateSize * 2];
             //Stride, bytes per symbol (states + (prediction , newState))
             tableStride = (short)(stateSize * 2); // stateSize times 2 output bytes
             stateMetrics = new int[stateSize];
@@ -84,7 +76,7 @@ namespace ChatbotSI
             stateStride = (short)symbolSize;
             lossTransitionTable = new bool[symbolSize * symbolSize];
 
-            lastLeapCount = (int)(table.Length * 0.99f);
+            lastLeapCount = (int)(predictionTable.Length * 0.99f);
 
             computeStateTransitionsTable();
         }
@@ -101,7 +93,7 @@ namespace ChatbotSI
                     matchState = stateSize - 1;
                     for (int k = 0; k < stateSize; k++)
                     {
-                        if (table[i * tableStride + k*2 + 0] == (byte)j)
+                        if (predictionTable[i * tableStride + k * 2 + 0] == (byte)j)
                         {
                             matchState = k;
                             loss = false;
@@ -149,7 +141,7 @@ namespace ChatbotSI
             //prediction = predict(0);
             stateMetrics[state]++;
             int index = (0 * tableStride + state * 2);
-            prediction = table[index + 0];
+            prediction = predictionTable[index + 0];
             if (prediction != input[0])
             {
                 errors++;
@@ -157,7 +149,7 @@ namespace ChatbotSI
                 lossCount += lossTransitionTable[0 * stateStride + input[0]] ? 1 : 0;
             }
             else
-                state = table[index + 1];
+                state = predictionTable[index + 1];
 
 
             //Make the rest of the predictions
@@ -165,8 +157,8 @@ namespace ChatbotSI
             {
                 //prediction = predict(input[i - 1]);
                 stateMetrics[state]++;
-                index = (input[i-1] * tableStride + state * 2);
-                prediction = table[index + 0];
+                index = (input[i - 1] * tableStride + state * 2);
+                prediction = predictionTable[index + 0];
 
                 if (prediction != input[i])
                 {
@@ -175,7 +167,7 @@ namespace ChatbotSI
                     lossCount += lossTransitionTable[input[i - 1] * stateStride + input[i]] ? 1 : 0;
                 }
                 else
-                    state = table[index + 1];
+                    state = predictionTable[index + 1];
             }
 
             errorCount += errors;
@@ -197,7 +189,7 @@ namespace ChatbotSI
                 {
                     inputSentence = inputDialogue.sentences[j];
 
-                    
+
                     testPredict(inputSentence.symbols);
                 }
             }
@@ -216,7 +208,7 @@ namespace ChatbotSI
             //result.predictions[0] = predict(0);
             //stateMetrics[state]++;
             int index = (0 * tableStride + state * 2);
-            result.predictions[0] = table[index + 0];
+            result.predictions[0] = predictionTable[index + 0];
 
             //Check if it was mistaken
             if (result.predictions[0] != input[0])
@@ -232,7 +224,7 @@ namespace ChatbotSI
                 //Store state
                 result.states[0] = state; //State was valid, keep it
 
-                state = table[index + 1];
+                state = predictionTable[index + 1];
                 result.hits[0] = 1;
             }
 
@@ -242,7 +234,7 @@ namespace ChatbotSI
                 //result.predictions[i] = predict(input[i - 1]);
                 //stateMetrics[state]++;
                 index = (input[i - 1] * tableStride + state * 2);
-                result.predictions[i] = table[index + 0];
+                result.predictions[i] = predictionTable[index + 0];
 
                 if (result.predictions[i] != input[i])
                 {
@@ -254,7 +246,7 @@ namespace ChatbotSI
                 else
                 {
                     result.states[i] = state;
-                    state = table[index + 1];
+                    state = predictionTable[index + 1];
 
                     result.hits[i] = 1;
                 }
@@ -337,14 +329,14 @@ namespace ChatbotSI
             state = control[0];
             //output[0] = predict(0);
             int index = (0 * tableStride + state * 2);
-            output[0] = table[index + 0];
+            output[0] = predictionTable[index + 0];
 
             for (int i = 1; i < output.Length; i++)
             {
                 state = control[i];
                 //output[i] = predict(output[i - 1]);
                 index = (output[i - 1] * tableStride + state * 2);
-                output[i] = table[index + 0];
+                output[i] = predictionTable[index + 0];
             }
 
             return output;
@@ -389,22 +381,22 @@ namespace ChatbotSI
             state = startState;
 
             int index = (0 * tableStride + state * 2);
-            output.Add(table[index + 0]);
-            state = table[index + 1];
+            output.Add(predictionTable[index + 0]);
+            state = predictionTable[index + 1];
 
             byte single;
             for (int i = 1; i < maxLength; i++)
             {
                 //output[i] = predict(output[i - 1]);
                 index = (output[i - 1] * tableStride + state * 2);
-                single = table[index + 0];
+                single = predictionTable[index + 0];
 
                 //Break if AI prints voidChar
                 if (single == 0)
                     break;
 
-                output.Add(table[index + 0]);
-                state = table[index + 1];
+                output.Add(predictionTable[index + 0]);
+                state = predictionTable[index + 1];
             }
 
             return output.ToArray();
@@ -478,7 +470,7 @@ namespace ChatbotSI
 
             Console.Write("Training:");
             int percentil = 1;
-            while(stopwatch.ElapsedMilliseconds < 1000 * 60 * minutes)
+            while (stopwatch.ElapsedMilliseconds < 1000 * 60 * minutes)
             {
                 if (stopwatch.ElapsedMilliseconds > (1000 * 60 * minutes / 10.0) * percentil)
                 {
@@ -530,7 +522,7 @@ namespace ChatbotSI
         public void saveToFile(string file)
         {
             //version, symbol size, state size, species depth
-            byte[] saveArray = new byte[1 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + table.Length];
+            byte[] saveArray = new byte[1 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + predictionTable.Length];
 
             //version
             saveArray[0] = 0;
@@ -565,7 +557,7 @@ namespace ChatbotSI
             bR.CopyTo(saveArray, 25);
 
             //Table
-            table.CopyTo(saveArray, 29);
+            predictionTable.CopyTo(saveArray, 29);
             System.IO.File.WriteAllBytes(file, saveArray);
         }
         public static HybridStatePredictor loadFromFile(string file)
@@ -701,9 +693,9 @@ namespace ChatbotSI
                 trainIntensity = new int[steps];
                 trainSampleCount = new int[steps];
                 trainAccumulatedAccuracies = new double[steps];
-                for(int i=0;i<steps;i++)
+                for (int i = 0; i < steps; i++)
                 {
-                    if(i != steps - 1)
+                    if (i != steps - 1)
                         trainIntensity[i] = (int)Math.Pow(2, i);
                     else
                         trainIntensity[i] = dnaLength;
@@ -722,7 +714,7 @@ namespace ChatbotSI
                 best.testPredict(trainSet);
                 Console.WriteLine("Layer training started with: " + best.getStats());
 
-                for(int i=0;i<trainSampleCount.Length;i++)
+                for (int i = 0; i < trainSampleCount.Length; i++)
                 {
                     trainSampleCount[i] = 1;
                     trainAccumulatedAccuracies[i] = best.accuracy;
@@ -751,12 +743,12 @@ namespace ChatbotSI
             {
                 Console.WriteLine("Train Intensity Status: ");
                 string line;
-                for(int i=0;i<trainIntensity.Length;i++)
+                for (int i = 0; i < trainIntensity.Length; i++)
                 {
                     line = "";
-                    line += ("" + trainIntensity[i]).PadRight(10).Substring(0,8);
+                    line += ("" + trainIntensity[i]).PadRight(10).Substring(0, 8);
                     line += " :: samples: " + ("" + trainSampleCount[i]).PadRight(10).Substring(0, 8);
-                    line += " :: avg.Gain: " + ("" + (trainAccumulatedAccuracies[i]/trainSampleCount[i]).ToString("0." + new string('#', 339)));
+                    line += " :: avg.Gain: " + ("" + (trainAccumulatedAccuracies[i] / trainSampleCount[i]).ToString("0." + new string('#', 339)));
                     Console.WriteLine(line);
                 }
             }
@@ -783,7 +775,7 @@ namespace ChatbotSI
 
                     predictors[index].testPredict(trainSet);
 
-                    lock(checkLock)
+                    lock (checkLock)
                     {
                         //Increment used training intensity sampling count
                         for (int i = currentTrainIndex; i >= 0; i--)
@@ -794,7 +786,7 @@ namespace ChatbotSI
                             }
                         }
 
-                        if(predictors[index].accuracy > best.accuracy)
+                        if (predictors[index].accuracy > best.accuracy)
                         {
                             //Best found
                             //Tune training intensity
@@ -816,7 +808,7 @@ namespace ChatbotSI
                                 }
                             }
                             //Go through remaining intensitys to check if there is a better one
-                            for(int i=currentTrainIndex + 1; i < trainSampleCount.Length;i++)
+                            for (int i = currentTrainIndex + 1; i < trainSampleCount.Length; i++)
                             {
                                 improvement = trainAccumulatedAccuracies[i] / trainSampleCount[i];
                                 if (improvement > bestImprovement)
@@ -833,7 +825,7 @@ namespace ChatbotSI
 
                             //Start copy procedure
                             //Lock all read locks
-                            for (int i=0;i<readLocks.Count;i++)
+                            for (int i = 0; i < readLocks.Count; i++)
                             {
                                 Monitor.Enter(readLocks[i]);
                             }
@@ -864,7 +856,7 @@ namespace ChatbotSI
                 training = false;
 
                 //Pass through all trainLocks to check cleared
-                for(int i=0;i<trainLocks.Count;i++)
+                for (int i = 0; i < trainLocks.Count; i++)
                 {
                     Monitor.Enter(trainLocks[i]);
                     Monitor.Exit(trainLocks[i]);

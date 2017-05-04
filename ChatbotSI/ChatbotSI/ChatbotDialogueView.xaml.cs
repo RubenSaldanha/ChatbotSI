@@ -77,6 +77,8 @@ namespace ChatbotSI
                 entrance.Content = dialogue.entrances[i];
                 dialoguePanel.Children.Add(entrance);
             }
+
+            dialogueScroll.ScrollToEnd();
         }
 
         private void InputTextBox_TextChanged(object sender, TextChangedEventArgs e)

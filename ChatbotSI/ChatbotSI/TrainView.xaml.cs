@@ -28,8 +28,6 @@ namespace ChatbotSI
 
         List<Button> corpusSelectors;
 
-        Thread trainingThread;
-
         public TrainView(Couppy chatbot)
         {
             InitializeComponent();
@@ -68,20 +66,6 @@ namespace ChatbotSI
             corpusSelectors[selectedIndex].Background = new SolidColorBrush(Colors.LightCyan);
         }
 
-        delegate void callback();
-        double trainMinutes;
-        private void StartTrain()
-        {
-            chatbot.train(Translator.textToSymbol(MainWindow.corpus[selectedIndex]), trainMinutes);
-            callback end = () => TrainEnded();
-            Dispatcher.BeginInvoke(end);
-        }
-        private void TrainEnded()
-        {
-            training = false;
-            trainButton.Content = "START Training";
-        }
-
         private void Train_Click(object sender, RoutedEventArgs e)
         {
             if(!training)
@@ -91,9 +75,7 @@ namespace ChatbotSI
                     //Start Training
                     training = true;
                     trainButton.Content = "STOP Training";
-                    trainMinutes = timeSlider.Value;
-                    trainingThread = new Thread(StartTrain);
-                    trainingThread.Start();
+                    chatbot.StartTrain(Translator.textToSymbol(MainWindow.corpus[selectedIndex]));
                 }
             }
             else
@@ -101,6 +83,8 @@ namespace ChatbotSI
                 //Stop Training
                 training = false;
                 trainButton.Content = "START Training";
+                chatbot.StopTrain();
+                chatbot.printCascade(0);
             }
         }
 

@@ -11,10 +11,10 @@
 
             <Button Content="Back" Margin="5" Click="Back_Click" DockPanel.Dock="Bottom" HorizontalAlignment="Stretch" />
             <Button x:Name="trainButton" Content="Train" Click="Train_Click" DockPanel.Dock="Bottom" Height="50" Margin="5" />
-            <Slider x:Name="timeSlider" Minimum ="5" Maximum="120" TickPlacement="BottomRight" TickFrequency="5" IsSnapToTickEnabled="True" HorizontalAlignment="Stretch" DockPanel.Dock="Bottom" Margin="5" />
+            <!--<Slider x:Name="timeSlider" Minimum ="5" Maximum="120" TickPlacement="BottomRight" TickFrequency="5" IsSnapToTickEnabled="True" HorizontalAlignment="Stretch" DockPanel.Dock="Bottom" Margin="5" /> -->
             <StackPanel Orientation="Horizontal" DockPanel.Dock="Bottom" HorizontalAlignment="Center">
                 <Label Content="Training time" HorizontalAlignment="Center"/>
-                <Label Content="{Binding ElementName=timeSlider, Path=Value, UpdateSourceTrigger=PropertyChanged}" />
+                <!--<Label Content="{Binding ElementName=timeSlider, Path=Value, UpdateSourceTrigger=PropertyChanged}" />-->
             </StackPanel>
 
             <Label Content="Available Corpus:" DockPanel.Dock="Top"/>

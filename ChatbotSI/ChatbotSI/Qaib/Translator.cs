@@ -185,5 +185,22 @@ namespace ChatbotSI
 
             return text;
         }
+
+        public static void trs()
+        {
+            Dictionary<string, List<string>> dic = new Dictionary<string, List<string>>();
+            List<string> synonims;
+
+            synonims = new List<string>();
+            synonims.Add("Hi");
+            synonims.Add("Hello");
+            synonims.Add("Hey");
+            dic.Add("Hi", synonims);
+
+            synonims = new List<string>();
+            synonims.Add("cat");
+            synonims.Add("feline");
+            dic.Add("cat", synonims);
+        }
     }
 }
