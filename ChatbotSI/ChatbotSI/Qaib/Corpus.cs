@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -145,7 +146,7 @@ namespace ChatbotSI
 
             Corpus loaded = new Corpus();
             loaded.dialogues = dialogues.ToArray();
-            loaded.name = file;
+            loaded.name = Path.GetFileName(file);
             return loaded;
         }
         public static Corpus getCornwell()

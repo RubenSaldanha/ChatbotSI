@@ -53,9 +53,28 @@ namespace ChatbotSI
                 //Create some visual
                 Button selector = new Button();
                 selector.DataContext = loadedChatbot;
+                selector.Width = 560;
+                selector.HorizontalAlignment = HorizontalAlignment.Center;
+                selector.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+                selector.VerticalContentAlignment = VerticalAlignment.Stretch;
+                selector.Background = new SolidColorBrush(Colors.LightYellow);
                 selector.Click += Selector_Click;
-                selector.Content = loadedChatbot.getDescription();
                 selector.Margin = new Thickness(6);
+
+                GroupBox chatBotDescription = new GroupBox();
+                chatBotDescription.Header = loadedChatbot.name;
+                chatBotDescription.FontSize = 18;
+                chatBotDescription.BorderThickness = new Thickness(0f);
+                //chatBotDescription.Background = new SolidColorBrush(Colors.LightCyan);
+                chatBotDescription.HorizontalAlignment = HorizontalAlignment.Stretch;
+                chatBotDescription.VerticalAlignment = VerticalAlignment.Stretch;
+
+                Label details = new Label();
+                details.FontSize = 14;
+                details.Content = loadedChatbot.getDescription();
+
+                chatBotDescription.Content = details;
+                selector.Content = chatBotDescription;
                 chatBotStackPanel.Children.Add(selector);
             }
         }

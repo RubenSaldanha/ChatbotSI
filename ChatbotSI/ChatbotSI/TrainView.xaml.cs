@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -28,6 +29,10 @@ namespace ChatbotSI
 
         List<Button> corpusSelectors;
 
+        int seconds;
+
+        System.Windows.Threading.DispatcherTimer timer = new System.Windows.Threading.DispatcherTimer();
+
         public TrainView(Couppy chatbot)
         {
             InitializeComponent();
@@ -38,14 +43,54 @@ namespace ChatbotSI
             for(int i=0;i<MainWindow.corpus.Count;i++)
             {
                 Button selector = new Button();
-                selector.Background = new SolidColorBrush(Colors.Gray);
-                selector.Content = MainWindow.corpus[i].name;
+                selector.Background = new SolidColorBrush(Colors.LightYellow);
+                GroupBox container = new GroupBox();
+                container.Header = MainWindow.corpus[i].name;
+                container.FontSize = 18;
+                container.BorderThickness = new Thickness(0);
+                container.HorizontalAlignment = HorizontalAlignment.Stretch;
+
+
+                Label stats = new Label();
+                stats.FontSize = 14;
+                string sts = "";
+                sts += "Dialogue count: " + ("" + MainWindow.corpus[i].getDialogueCount()).PadRight(20) + "   ";
+                sts += "Sentence count: " + ("" + MainWindow.corpus[i].getSentenceCount()).PadRight(20) + "   ";
+                sts += "Character count: " + ("" + MainWindow.corpus[i].getCharCount()).PadRight(20);
+                stats.Content = sts;
+
+                container.Content = stats;
+
+                selector.Content = container;
                 selector.DataContext = i;
+                selector.Height = 64;
+                selector.Width = 700;
+                selector.FontSize = 18;
                 selector.Click += Selector_Click;
+                selector.Margin = new Thickness(2);
+                selector.HorizontalContentAlignment = HorizontalAlignment.Stretch;
 
                 corpusSelectors.Add(selector);
                 corpusPanel.Children.Add(selector);
             }
+
+            timer.Interval = new TimeSpan(0, 0, 1);
+            timer.Tick += timer_tick;
+
+            Couppy.TrainingUpdated += Couppy_TrainingUpdated;
+        }
+
+        string currentStatus;
+        private void Couppy_TrainingUpdated(string message)
+        {
+            currentStatus = message;
+
+            Dispatcher.Invoke(updateStatusLabel);
+        }
+        private void updateStatusLabel()
+        {
+            statusText.Text = currentStatus;
+            //statusScroller.ScrollToEnd();
         }
 
         private void Selector_Click(object sender, RoutedEventArgs e)
@@ -59,11 +104,15 @@ namespace ChatbotSI
             if(selectedIndex != -1)
             {
                 Button unselect = corpusSelectors[selectedIndex];
-                unselect.Background = new SolidColorBrush(Colors.Gray);
+                unselect.Background = new SolidColorBrush(Colors.LightYellow);
+                unselect.Foreground = new SolidColorBrush(Colors.Black);
+                ((corpusSelectors[selectedIndex].Content as GroupBox).Content as Label).Foreground = new SolidColorBrush(Colors.Black);
             }
 
             selectedIndex = index;
-            corpusSelectors[selectedIndex].Background = new SolidColorBrush(Colors.LightCyan);
+            corpusSelectors[selectedIndex].Background = new SolidColorBrush(Colors.Salmon);
+            corpusSelectors[selectedIndex].Foreground = new SolidColorBrush(Colors.White);
+            ((corpusSelectors[selectedIndex].Content as GroupBox).Content as Label).Foreground = new SolidColorBrush(Colors.White);
         }
 
         private void Train_Click(object sender, RoutedEventArgs e)
@@ -73,19 +122,33 @@ namespace ChatbotSI
                 if (selectedIndex >= 0)
                 {
                     //Start Training
+                    timer.Start();
+
                     training = true;
-                    trainButton.Content = "STOP Training";
+                    trainingTime.Background = new SolidColorBrush(Colors.Salmon);
+                    trainingTime.Foreground = new SolidColorBrush(Colors.White);
+                    trainButton.Content = "Stop Training";
                     chatbot.StartTrain(Translator.textToSymbol(MainWindow.corpus[selectedIndex]));
                 }
             }
             else
             {
+                timer.Stop();
                 //Stop Training
                 training = false;
-                trainButton.Content = "START Training";
+                trainingTime.Background = new SolidColorBrush(Colors.Transparent);
+                trainingTime.Foreground = new SolidColorBrush(Colors.Black);
+                trainButton.Content = "Start Training";
                 chatbot.StopTrain();
-                chatbot.printCascade(0);
+                //chatbot.printCascade();
             }
+        }
+        private void timer_tick(object sender, EventArgs e)
+        {
+            seconds++;
+
+            TimeSpan time = TimeSpan.FromSeconds(seconds);
+            trainingTime.Content = time.ToString(@"hh\:mm\:ss");
         }
 
         private void Back_Click(object sender, RoutedEventArgs e)

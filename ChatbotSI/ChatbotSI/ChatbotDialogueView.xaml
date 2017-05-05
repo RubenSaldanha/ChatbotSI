@@ -9,8 +9,8 @@
     <Grid>
         <DockPanel>
             <Button Content="Exit Conversation" DockPanel.Dock="Bottom" Height="25" Margin="2" Click="Exit_Click"/>
-            <TextBox x:Name="inputTextBox" DockPanel.Dock="Bottom" AcceptsReturn="True" Height="40" Margin="10"/>
-            <ScrollViewer x:Name="dialogueScroll" Margin="10" Background="LightCyan" >
+            <TextBox x:Name="inputTextBox" DockPanel.Dock="Bottom" AcceptsReturn="True" Height="40" Margin="10" Background="White" />
+            <ScrollViewer x:Name="dialogueScroll" Margin="10" Background="Wheat" >
                 <StackPanel x:Name="dialoguePanel" Orientation="Vertical" />
             </ScrollViewer>
         </DockPanel>

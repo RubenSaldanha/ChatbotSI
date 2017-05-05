@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ChatbotSI
@@ -15,17 +16,27 @@ namespace ChatbotSI
         public int stateSize;
 
         public byte[] predictionTable;
+        public float[] predictionAccuracy;
         public short tableStride;
 
+        public int[][] predictionAccumulationTable;
+
+        public byte[] stateOnlyPredictionTable;
+        public int[][] stateOnlyAccumulationTable;
+        public float[] stateOnlyPredictionAccuracy;
+
+        public byte[] inputOnlyPredictionTable;
+        public int[][] inputOnlyAccumulationTable;
+        public float[] inputOnlyPredictionAccuracy;
+
+
         public byte[] stateTransitionTable;
-        public bool[] lossTransitionTable;
         public short stateStride;
 
         public byte state;
 
         public int predictionCount;
         public int errorCount;
-        public int lossCount;
         public int[] stateMetrics;
 
         public float stateEntropy
@@ -48,88 +59,60 @@ namespace ChatbotSI
         {
             get { return 1f - errorCount / (float)predictionCount; }
         }
-        public float loss
-        {
-            get { return lossCount / (float)predictionCount; }
-        }
 
-        private HybridStatePredictor()
+        private RestrictedStatePredictor()
         {
 
         }
-        public HybridStatePredictor(int symbolSize, int stateSize)
+        public RestrictedStatePredictor(int symbolSize, int stateSize)
         {
             this.symbolSize = symbolSize;
             this.stateSize = stateSize;
 
             //Create table with input(symbolSize , stateSize) each with 2 entries ( prediction , newState )
-            predictionTable = new byte[symbolSize * stateSize * 2];
+            predictionTable = new byte[symbolSize * stateSize];
             //Stride, bytes per symbol (states + (prediction , newState))
-            tableStride = (short)(stateSize * 2); // stateSize times 2 output bytes
+            tableStride = (short)(stateSize); // stateSize times 2 output bytes
             stateMetrics = new int[stateSize];
             //i0 , s0: p00 , s00
             //i0 , s1: p01 , s01
             //...
 
             //Create state transition table based on what was seen and what should have been the prediction ( input, correct)
-            stateTransitionTable = new byte[symbolSize * symbolSize];
-            stateStride = (short)symbolSize;
-            lossTransitionTable = new bool[symbolSize * symbolSize];
+            stateTransitionTable = new byte[symbolSize * stateSize];
+            stateStride = (short)stateSize;
 
-            lastLeapCount = (int)(predictionTable.Length * 0.99f);
 
-            computeStateTransitionsTable();
-        }
+            //Help structures
+            predictionAccuracy = new float[symbolSize * stateSize];
 
-        void computeStateTransitionsTable()
-        {
-            int matchState;
-            bool loss;
+            predictionAccumulationTable = new int[symbolSize * stateSize][];
+            for (int i = 0; i < predictionAccumulationTable.Length; i++)
+                predictionAccumulationTable[i] = new int[symbolSize];
+
+            stateOnlyPredictionTable = new byte[stateSize];
+            stateOnlyPredictionAccuracy = new float[stateSize];
+            stateOnlyAccumulationTable = new int[stateSize][];
+            for (int i = 0; i < stateSize; i++)
+                stateOnlyAccumulationTable[i] = new int[symbolSize];
+
+            inputOnlyPredictionTable = new byte[symbolSize];
+            inputOnlyPredictionAccuracy = new float[symbolSize];
+            inputOnlyAccumulationTable = new int[symbolSize][];
             for (int i = 0; i < symbolSize; i++)
-            {
-                for (int j = 0; j < symbolSize; j++)
-                {
-                    loss = true;
-                    matchState = stateSize - 1;
-                    for (int k = 0; k < stateSize; k++)
-                    {
-                        if (predictionTable[i * tableStride + k * 2 + 0] == (byte)j)
-                        {
-                            matchState = k;
-                            loss = false;
-                            break;
-                        }
-                    }
-                    stateTransitionTable[i * stateStride + j] = (byte)matchState;
-                    lossTransitionTable[i * stateStride + j] = loss;
-                }
-            }
+                inputOnlyAccumulationTable[i] = new int[symbolSize];
         }
-
+        
         public void reset()
         {
             state = 0;
             predictionCount = 0;
             errorCount = 0;
-            lossCount = 0;
             for (int i = 0; i < stateMetrics.Length; i++)
                 stateMetrics[i] = 0;
         }
 
-        ////Make a single prediction and update state
-        //public byte predict(byte input)
-        //{
-        //    //Increment one prediction made with current state
-        //    stateMetrics[state]++;
-
-        //    //Object index
-        //    int index = (input * tableStride + state * 2);
-
-        //    //Return prediction
-        //    return table[index + 0];
-        //}
-
-        //Predicts only to update error
+        
 
         public void testPredict(byte[] input)
         {
@@ -140,16 +123,13 @@ namespace ChatbotSI
             //state = 0;
             //prediction = predict(0);
             stateMetrics[state]++;
-            int index = (0 * tableStride + state * 2);
-            prediction = predictionTable[index + 0];
+            int index = (0 * tableStride + state);
+            prediction = predictionTable[index];
+
             if (prediction != input[0])
-            {
                 errors++;
-                state = stateTransitionTable[0 * stateStride + input[0]];
-                lossCount += lossTransitionTable[0 * stateStride + input[0]] ? 1 : 0;
-            }
-            else
-                state = predictionTable[index + 1];
+
+            state = stateTransitionTable[index];
 
 
             //Make the rest of the predictions
@@ -157,17 +137,14 @@ namespace ChatbotSI
             {
                 //prediction = predict(input[i - 1]);
                 stateMetrics[state]++;
-                index = (input[i - 1] * tableStride + state * 2);
-                prediction = predictionTable[index + 0];
+                index = (input[i - 1] * tableStride + state);
+
+                prediction = predictionTable[index];
 
                 if (prediction != input[i])
-                {
                     errors++;
-                    state = stateTransitionTable[input[i - 1] * stateStride + input[i]];
-                    lossCount += lossTransitionTable[input[i - 1] * stateStride + input[i]] ? 1 : 0;
-                }
-                else
-                    state = predictionTable[index + 1];
+
+                state = stateTransitionTable[index];
             }
 
             errorCount += errors;
@@ -195,6 +172,197 @@ namespace ChatbotSI
             }
         }
 
+
+        //increments optimal prediction table
+        public void bake(byte input, byte expected)
+        {
+            stateMetrics[state]++;
+
+            int index = (input * tableStride + state);
+            predictionAccumulationTable[index][expected]++; //Increment frequency
+
+            state = stateTransitionTable[index]; //Transition
+        }
+
+        //increments optimal prediction table
+        public void bake(byte[] input)
+        {
+            stateMetrics[state]++;
+
+            int index = (0 * tableStride + state);
+            predictionAccumulationTable[index][input[0]]++; //Increment frequency
+
+            state = stateTransitionTable[index]; //Transition
+
+
+            //Make the rest of the predictions
+            for (int i = 1; i < input.Length; i++)
+            {
+                //prediction = predict(input[i - 1]);
+                stateMetrics[state]++;
+
+                index = (input[i - 1] * tableStride + state);
+                predictionAccumulationTable[index][input[i]]++;
+
+                state = stateTransitionTable[index];
+            }
+        }
+        //Creates optimal prediction table based on current state transition table
+        public void bake(SymbolCorpus input)
+        {
+            SymbolDialogue inputDialogue;
+            SymbolSentence inputSentence;
+            for (int i = 0; i < input.dialogues.Length; i++)
+            {
+                //reset state per dialogue
+                state = 0;
+                inputDialogue = input.dialogues[i];
+
+                for (int j = 0; j < inputDialogue.sentences.Length; j++)
+                {
+                    inputSentence = inputDialogue.sentences[j];
+
+
+                    bake(inputSentence.symbols);
+                }
+            }
+        }
+        //Finalize baking to compute error and produce a predictor
+        public void finalizeBake()
+        {
+            int wIndex;
+            int bestCount;
+            byte bestSymbol;
+            int predCount;
+            // Create prediction table based on input values
+            for (int i = 0; i < stateSize; i++)
+            {
+
+                for (int j = 0; j < symbolSize; j++)
+                {
+                    wIndex = j * tableStride + i;
+
+                    bestCount = predictionAccumulationTable[wIndex][0];
+                    stateOnlyAccumulationTable[i][0] += predictionAccumulationTable[wIndex][0];
+                    inputOnlyAccumulationTable[j][0] += predictionAccumulationTable[wIndex][0];
+                    predictionAccumulationTable[wIndex][0] = 0;
+                    bestSymbol = 0;
+                    predCount = bestCount;
+                    for (byte k = 1; k < symbolSize; k++)
+                    {
+                        stateOnlyAccumulationTable[i][k] += predictionAccumulationTable[wIndex][k];
+                        inputOnlyAccumulationTable[j][k] += predictionAccumulationTable[wIndex][k];
+
+                        predCount += predictionAccumulationTable[wIndex][k];
+
+                        if (predictionAccumulationTable[wIndex][k] > bestCount)
+                        {
+                            bestCount = predictionAccumulationTable[wIndex][k];
+                            bestSymbol = k;
+                        }
+
+                        predictionAccumulationTable[wIndex][k] = 0;
+                    }
+
+                    predictionTable[wIndex] = (byte)bestSymbol;
+
+                    if (predCount != 0)
+                        predictionAccuracy[wIndex] = bestCount / (float)predCount;
+                    else
+                        predictionAccuracy[wIndex] = 0;
+
+                    errorCount += predCount - bestCount;
+                    predictionCount += predCount;
+                }
+            }
+
+            //State estimator
+            for (int i = 0; i < stateSize; i++)
+            {
+                bestCount = stateOnlyAccumulationTable[i][0];
+                bestSymbol = 0;
+                predCount = bestCount;
+                stateOnlyAccumulationTable[i][0] = 0;
+                for (byte k = 1; k < symbolSize; k++)
+                {
+                    predCount += stateOnlyAccumulationTable[i][k];
+
+                    if (stateOnlyAccumulationTable[i][k] > bestCount)
+                    {
+                        bestCount = stateOnlyAccumulationTable[i][k];
+                        bestSymbol = k;
+                    }
+
+                    stateOnlyAccumulationTable[i][k] = 0;
+                }
+
+                stateOnlyPredictionTable[i] = bestSymbol;
+                if (predCount != 0)
+                    stateOnlyPredictionAccuracy[i] = bestCount / (float)predCount;
+                else
+                    stateOnlyPredictionAccuracy[i] = 0;
+            }
+
+            //Input only estimator
+            for (int i = 0; i < symbolSize; i++)
+            {
+                bestCount = inputOnlyAccumulationTable[i][0];
+                bestSymbol = 0;
+                predCount = bestCount;
+                inputOnlyAccumulationTable[i][0] = 0;
+                for (byte k = 1; k < symbolSize; k++)
+                {
+                    predCount += inputOnlyAccumulationTable[i][k];
+
+                    if (inputOnlyAccumulationTable[i][k] > bestCount)
+                    {
+                        bestCount = inputOnlyAccumulationTable[i][k];
+                        bestSymbol = k;
+                    }
+
+                    inputOnlyAccumulationTable[i][k] = 0;
+                }
+
+                inputOnlyPredictionTable[i] = bestSymbol;
+                if (predCount != 0)
+                    inputOnlyPredictionAccuracy[i] = bestCount / (float)predCount;
+                else
+                    inputOnlyPredictionAccuracy[i] = 0;
+            }
+
+            //Rebake main table for sparse values elimination using InputOnly and StateOnly estimators
+            for (int i = 0; i < symbolSize; i++)
+            {
+                for (int j = 0; j < stateSize; j++)
+                {
+                    wIndex = i * tableStride + j;
+
+                    //If predictionTable is invalid on element
+                    if (predictionAccuracy[wIndex] == 0)
+                    {
+                        //Use input only
+                        if (inputOnlyPredictionAccuracy[i] > stateOnlyPredictionAccuracy[j])
+                        {
+                            predictionTable[wIndex] = inputOnlyPredictionTable[i];
+                            predictionAccuracy[wIndex] = inputOnlyPredictionAccuracy[i];
+                        }
+                        else //Use state only
+                        {
+                            predictionTable[wIndex] = stateOnlyPredictionTable[j];
+                            predictionAccuracy[wIndex] = stateOnlyPredictionAccuracy[j];
+                        }
+                    }
+                }
+            }
+        }
+
+        //Process and predict one single input
+        public byte process(byte input)
+        {
+            int index = input * tableStride + state;
+            state = stateTransitionTable[index];
+            return predictionTable[index];
+        }
         //Process to retrive predictions, hits and states
         public ProcessResult process(byte[] input)
         {
@@ -207,49 +375,33 @@ namespace ChatbotSI
             //state = 0;
             //result.predictions[0] = predict(0);
             //stateMetrics[state]++;
-            int index = (0 * tableStride + state * 2);
-            result.predictions[0] = predictionTable[index + 0];
+            int index = (0 * tableStride + state);
+            result.predictions[0] = predictionTable[index];
 
             //Check if it was mistaken
             if (result.predictions[0] != input[0])
-            {
-                state = stateTransitionTable[0 * stateStride + input[0]];
-                //Store state
-                result.states[0] = state; //State was invalid, correct it
-
-                result.hits[0] = (lossTransitionTable[0 * stateStride + input[0]]) ? (byte)(symbolSize - 1) : (byte)0;
-            }
+                result.hits[0] = 0;
             else
-            {
-                //Store state
-                result.states[0] = state; //State was valid, keep it
-
-                state = predictionTable[index + 1];
                 result.hits[0] = 1;
-            }
+
+            state = stateTransitionTable[index];
+            result.states[0] = state;
 
             //Make the rest of the predictions
             for (int i = 1; i < input.Length; i++)
             {
                 //result.predictions[i] = predict(input[i - 1]);
                 //stateMetrics[state]++;
-                index = (input[i - 1] * tableStride + state * 2);
-                result.predictions[i] = predictionTable[index + 0];
+                index = (input[i - 1] * tableStride + state);
+                result.predictions[i] = predictionTable[index];
 
                 if (result.predictions[i] != input[i])
-                {
-                    state = stateTransitionTable[input[i - 1] * stateStride + input[i]];
-                    result.states[i] = state;//State was invalid, correct it
-
-                    result.hits[i] = (lossTransitionTable[input[i - 1] * stateStride + input[i]]) ? (byte)(symbolSize - 1) : (byte)0;
-                }
+                    result.hits[i] = 0;
                 else
-                {
-                    result.states[i] = state;
-                    state = predictionTable[index + 1];
-
                     result.hits[i] = 1;
-                }
+
+                state = stateTransitionTable[index];
+                result.states[i] = state;
             }
 
             return result;
@@ -327,16 +479,15 @@ namespace ChatbotSI
             byte[] output = new byte[control.Length];
 
             state = control[0];
-            //output[0] = predict(0);
-            int index = (0 * tableStride + state * 2);
-            output[0] = predictionTable[index + 0];
+            int index = (0 * tableStride + state);
+            output[0] = predictionTable[index];
 
             for (int i = 1; i < output.Length; i++)
             {
                 state = control[i];
-                //output[i] = predict(output[i - 1]);
-                index = (output[i - 1] * tableStride + state * 2);
-                output[i] = predictionTable[index + 0];
+
+                index = (output[i - 1] * tableStride + state);
+                output[i] = predictionTable[index];
             }
 
             return output;
@@ -380,23 +531,23 @@ namespace ChatbotSI
             List<byte> output = new List<byte>();
             state = startState;
 
-            int index = (0 * tableStride + state * 2);
-            output.Add(predictionTable[index + 0]);
-            state = predictionTable[index + 1];
+            int index = (0 * tableStride + state);
+            output.Add(predictionTable[index]);
+            state = stateTransitionTable[index];
 
             byte single;
             for (int i = 1; i < maxLength; i++)
             {
                 //output[i] = predict(output[i - 1]);
-                index = (output[i - 1] * tableStride + state * 2);
-                single = predictionTable[index + 0];
+                index = (output[i - 1] * tableStride + state);
+                single = predictionTable[index];
 
                 //Break if AI prints voidChar
                 if (single == 0)
                     break;
 
-                output.Add(predictionTable[index + 0]);
-                state = predictionTable[index + 1];
+                output.Add(single);
+                state = stateTransitionTable[index];
             }
 
             return output.ToArray();
@@ -412,8 +563,6 @@ namespace ChatbotSI
             stats += "Prediction Count: " + predictionCount + "\n";
             stats += "Accuracy: " + accuracy + "\n";
             stats += "State entropy: " + stateEntropy + "\n";
-            stats += "Loss: " + loss + "\n";
-            stats += "Leap: " + lastLeapIntensity + "\n";
 
             return stats;
         }
@@ -422,9 +571,8 @@ namespace ChatbotSI
             string stats = "";
             stats += " :: depth. " + (trainingDepth + "").PadRight(20).Substring(0, 6);
             stats += " :: acc.: " + accuracy;
+            stats += " :: pc.: " + predictionCount;
             stats += " :: s.entropy: " + ("" + stateEntropy).PadRight(10).Substring(0, 4);
-            stats += " :: loss: " + ("" + loss).PadRight(10).Substring(0, 5);
-            stats += " :: lit: " + ("" + lastLeapIntensity).PadRight(10).Substring(0, 7);
             return stats;
         }
 
@@ -438,72 +586,6 @@ namespace ChatbotSI
         public void StopTrain()
         {
             trainer.StopTrain();
-        }
-        public void train2(SymbolCorpus trainSet, double minutes)
-        {
-            Random rdm = new Random();
-
-            HybridStatePredictor predictor = new HybridStatePredictor(symbolSize, stateSize);
-            //Make copy of current
-            copyInto(this, predictor);
-
-            if (predictor.trainingDepth == 0)
-            {
-                randomOverride(predictor, rdm);
-
-                //Read and predict analysis
-                predictor.testPredict(trainSet);
-
-                //TODO Generate some more randoms and choose best - might not be needed since leap Intensity is so high at the beginning
-            }
-
-            //Initialize training variables
-            HybridStatePredictor testTable = new HybridStatePredictor(predictor.symbolSize, predictor.stateSize);
-            HybridStatePredictor temp;
-
-            double leapIntensity = predictor.lastLeapIntensity * 2 * 4;
-            if (leapIntensity > 0.9)
-                leapIntensity = 0.9;
-
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
-
-            Console.Write("Training:");
-            int percentil = 1;
-            while (stopwatch.ElapsedMilliseconds < 1000 * 60 * minutes)
-            {
-                if (stopwatch.ElapsedMilliseconds > (1000 * 60 * minutes / 10.0) * percentil)
-                {
-                    Console.Write("$"); //print training tick
-                    percentil++;
-                }
-
-                //Mutation
-                //leapOverride(testTable, predictor, rdm, leapIntensity);
-
-                //Read and predict analysis
-                testTable.testPredict(trainSet);
-
-                if (testTable.accuracy > predictor.accuracy)
-                {
-                    //Best predictor found
-
-                    //Soft change with memory for sucessful mutations intensity (x2 because of random average behaviour)
-                    leapIntensity = 0.8 * leapIntensity + 0.2 * (2 * testTable.lastLeapIntensity * 4);
-
-                    if (leapIntensity > 0.9)
-                        leapIntensity = 0.9; //maximum allowed mutation intensity
-
-                    //Swap predictors for memory usage
-                    temp = predictor;
-                    predictor = testTable;
-                    testTable = temp;
-                }
-            }
-            stopwatch.Stop();
-            Console.WriteLine();
-
-            copyInto(predictor, this);
         }
 
         public class ProcessResult
@@ -519,153 +601,68 @@ namespace ChatbotSI
             public SymbolCorpus states;
         }
 
-        public void saveToFile(string file)
-        {
-            //version, symbol size, state size, species depth
-            byte[] saveArray = new byte[1 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + predictionTable.Length];
-
-            //version
-            saveArray[0] = 0;
-
-            //symbol size
-            byte[] bR;
-            bR = BitConverter.GetBytes(symbolSize);
-            bR.CopyTo(saveArray, 1);
-
-            //state size
-            bR = BitConverter.GetBytes(stateSize);
-            bR.CopyTo(saveArray, 5);
-
-            //species depth
-            bR = BitConverter.GetBytes(trainingDepth);
-            bR.CopyTo(saveArray, 9);
-
-            //predictionCount
-            bR = BitConverter.GetBytes(predictionCount);
-            bR.CopyTo(saveArray, 13);
-
-            //errorCount
-            bR = BitConverter.GetBytes(errorCount);
-            bR.CopyTo(saveArray, 17);
-
-            //lossCount
-            bR = BitConverter.GetBytes(lossCount);
-            bR.CopyTo(saveArray, 21);
-
-            //lastLeapCount
-            bR = BitConverter.GetBytes(lastLeapCount);
-            bR.CopyTo(saveArray, 25);
-
-            //Table
-            predictionTable.CopyTo(saveArray, 29);
-            System.IO.File.WriteAllBytes(file, saveArray);
-        }
-        public static HybridStatePredictor loadFromFile(string file)
-        {
-            byte[] saveArray = System.IO.File.ReadAllBytes(file);
-
-            HybridStatePredictor load = null;
-
-            //version check
-            if (saveArray[0] == 0)
-            {
-                int symbolSize = BitConverter.ToInt32(saveArray, 1);
-                int stateSize = BitConverter.ToInt32(saveArray, 5);
-                load = new HybridStatePredictor(symbolSize, stateSize);
-                load.trainingDepth = BitConverter.ToInt32(saveArray, 9);
-                load.predictionCount = BitConverter.ToInt32(saveArray, 13);
-                load.errorCount = BitConverter.ToInt32(saveArray, 17);
-                load.lossCount = BitConverter.ToInt32(saveArray, 21);
-                load.lastLeapCount = BitConverter.ToInt32(saveArray, 25);
-                for (int i = 0; i < load.table.Length; i++)
-                    load.table[i] = saveArray[29 + i];
-
-                load.computeStateTransitionsTable();
-            }
-            else
-            {
-                throw new Exception("Invalid file version.");
-            }
-
-            return load;
-        }
-
-        public static void leapOverride(HybridStatePredictor destination, HybridStatePredictor original, Random rdm, int intensity)
+        public static void leapOverride(RestrictedStatePredictor original, RestrictedStatePredictor destination, Random rdm, int intensity)
         {
             destination.reset();
             //Copy original to destination
-            original.table.CopyTo(destination.table, 0);
+            original.stateTransitionTable.CopyTo(destination.stateTransitionTable, 0);
 
             destination.trainingDepth = original.trainingDepth + 1;
 
             //Choose the number of changes to make to the original based on intensity
             //not very optimal
             int changeCount = intensity;
-            destination.lastLeapCount = changeCount;
 
             //Make changes
             int index;
             for (int i = 0; i < changeCount; i++)
             {
                 //Choose random table index for change
-                index = rdm.Next(destination.table.Length);
+                index = rdm.Next(destination.stateTransitionTable.Length);
 
                 //Check if index is prediction image or state image
-                if (index % 2 == 0)
-                    destination.table[index] = (byte)rdm.Next(destination.symbolSize); //New random prediction at index
-                else
-                    destination.table[index] = (byte)rdm.Next(destination.stateSize); //New random state at index
+                destination.stateTransitionTable[index] = (byte)rdm.Next(destination.stateSize); //New random state at index
             }
-
-            destination.computeStateTransitionsTable();
         }
-        public static void randomOverride(HybridStatePredictor destination, Random rdm)
+        public static void randomOverride(RestrictedStatePredictor destination, Random rdm)
         {
             destination.reset();
             destination.trainingDepth = 0;
 
 
-            for (int i = 0; i < destination.table.Length; i++)
+            for (int i = 0; i < destination.stateTransitionTable.Length; i++)
             {
-                if (i % 2 == 0)
-                    destination.table[i] = (byte)rdm.Next(destination.symbolSize); //New random prediction at index
-                else
-                    destination.table[i] = (byte)rdm.Next(destination.stateSize); //New random state at index
+                destination.stateTransitionTable[i] = (byte)rdm.Next(destination.stateSize); //New random state at index
             }
-
-            destination.computeStateTransitionsTable();
         }
 
-        public static void copyInto(HybridStatePredictor original, HybridStatePredictor destination)
+        public static void copyInto(RestrictedStatePredictor original, RestrictedStatePredictor destination)
         {
-            original.table.CopyTo(destination.table, 0);
+            original.predictionTable.CopyTo(destination.predictionTable, 0);
+            destination.tableStride = original.tableStride;
             destination.errorCount = original.errorCount;
-            destination.lastLeapCount = original.lastLeapCount;
             destination.predictionCount = original.predictionCount;
             destination.state = original.state;
             destination.stateSize = original.stateSize;
             destination.symbolSize = original.symbolSize;
-            destination.tableStride = original.tableStride;
             destination.trainingDepth = original.trainingDepth;
             original.stateMetrics.CopyTo(destination.stateMetrics, 0);
-            destination.stateStride = original.stateStride;
             original.stateTransitionTable.CopyTo(destination.stateTransitionTable, 0);
-            destination.lossCount = original.lossCount;
-            original.lossTransitionTable.CopyTo(destination.lossTransitionTable, 0);
+            destination.stateStride = original.stateStride;
         }
 
         public class Trainer
         {
-            HybridStatePredictor target;
+            RestrictedStatePredictor target;
 
             public bool training = false;
 
-            HybridStatePredictor best;
+            RestrictedStatePredictor best;
             object checkLock;
             List<Thread> threads;
             List<object> readLocks;
             List<object> trainLocks;
-            List<HybridStatePredictor> predictors;
+            List<RestrictedStatePredictor> predictors;
 
             SymbolCorpus trainSet;
 
@@ -677,16 +674,16 @@ namespace ChatbotSI
 
             int dnaLength;
 
-            public Trainer(HybridStatePredictor target)
+            public Trainer(RestrictedStatePredictor target)
             {
                 this.target = target;
                 checkLock = new object();
                 threads = new List<Thread>();
                 readLocks = new List<object>();
                 trainLocks = new List<object>();
-                predictors = new List<HybridStatePredictor>();
+                predictors = new List<RestrictedStatePredictor>();
 
-                dnaLength = target.table.Length;
+                dnaLength = target.stateTransitionTable.Length;
                 int steps;
                 for (steps = 0; Math.Pow(2, steps) < dnaLength; steps++) ;
                 steps++; //include last and first
@@ -708,10 +705,10 @@ namespace ChatbotSI
                 int threadCount = 8;
                 training = true;
 
-                best = new HybridStatePredictor(target.symbolSize, target.stateSize);
-                HybridStatePredictor.copyInto(target, best);
+                best = new RestrictedStatePredictor(target.symbolSize, target.stateSize);
+                RestrictedStatePredictor.copyInto(target, best);
                 best.reset();
-                best.testPredict(trainSet);
+                best.bake(trainSet);
                 Console.WriteLine("Layer training started with: " + best.getStats());
 
                 for (int i = 0; i < trainSampleCount.Length; i++)
@@ -727,7 +724,7 @@ namespace ChatbotSI
                     readLocks.Add(new object());
                     trainLocks.Add(new object());
                     //Create thread resource
-                    HybridStatePredictor tester = new HybridStatePredictor(best.symbolSize, best.stateSize);
+                    RestrictedStatePredictor tester = new RestrictedStatePredictor(best.symbolSize, best.stateSize);
                     predictors.Add(tester);
                     //Create and start thread
                     Thread tt = new Thread(ThreadTrain);
@@ -770,10 +767,10 @@ namespace ChatbotSI
                     usedIntensity = rdm.Next(trainIntensity[currentTrainIndex]) + 1; //Inclusive upper bound, exclusive lower bound
                     lock (readLocks[index])
                     {
-                        HybridStatePredictor.leapOverride(predictors[index], best, rdm, usedIntensity);
+                        RestrictedStatePredictor.leapOverride(best, predictors[index], rdm, usedIntensity);
                     }
 
-                    predictors[index].testPredict(trainSet);
+                    predictors[index].bake(trainSet);
 
                     lock (checkLock)
                     {
@@ -820,8 +817,8 @@ namespace ChatbotSI
                             //Change index to the best expected improvement
                             currentTrainIndex = bestIndex;
 
-                            if (predictors[index].trainingDepth % 10 == 0)
-                                printTrainingIntensityStatus();
+                            //if (predictors[index].trainingDepth % 10 == 0)
+                            //    printTrainingIntensityStatus();
 
                             //Start copy procedure
                             //Lock all read locks
@@ -831,7 +828,7 @@ namespace ChatbotSI
                             }
 
                             //Copy into best
-                            HybridStatePredictor.copyInto(predictors[index], best);
+                            RestrictedStatePredictor.copyInto(predictors[index], best);
 
                             Console.WriteLine("Leap by thread " + index + " : " + best.getStats());
                             //Unlock all read locks
@@ -863,7 +860,7 @@ namespace ChatbotSI
                 }
 
                 //Copy train result to target
-                HybridStatePredictor.copyInto(best, target);
+                RestrictedStatePredictor.copyInto(best, target);
             }
         }
     }

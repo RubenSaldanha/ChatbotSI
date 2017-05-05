@@ -7,12 +7,14 @@
              mc:Ignorable="d" 
              d:DesignHeight="300" d:DesignWidth="300">
     <Grid>
-        <DockPanel Background="LightBlue">
-            <Label Content="Available Chatbots" DockPanel.Dock="Top" />
+        <DockPanel Background="PeachPuff">
+            <Label Content="Available Chatbots" DockPanel.Dock="Top" FontSize="16" />
 
-            <Button Content="Create new Chatbot" DockPanel.Dock="Bottom" Click="CreateChatbot_Click" Margin="5" Height="30" />
-
-            <StackPanel x:Name="chatBotStackPanel" Orientation="Vertical" Background="LightCyan" />
+            <Button Content="Create" DockPanel.Dock="Bottom" Click="CreateChatbot_Click" Margin="5" Height="40" FontSize="18" Width="160" Background="LightYellow" />
+            
+            <ScrollViewer>
+                <StackPanel x:Name="chatBotStackPanel" Orientation="Vertical" Background="Wheat" Margin="5"/>
+            </ScrollViewer>
         </DockPanel>
     </Grid>
 </UserControl>

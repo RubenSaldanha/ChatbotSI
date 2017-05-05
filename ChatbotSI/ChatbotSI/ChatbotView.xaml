@@ -5,16 +5,35 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:ChatbotSI"
              mc:Ignorable="d" 
-             d:DesignHeight="300" d:DesignWidth="400">
+             d:DesignHeight="600" d:DesignWidth="800">
     <Grid>
-        <DockPanel>
-            <StackPanel Orientation="Horizontal" DockPanel.Dock="Bottom" HorizontalAlignment="Center" >
-                <Button Content="Back" Width="80" Margin="5" Click="Back_Click" />
-                <Button Content="Train" Width="80" Margin="5" Click="Train_Click" />
-                <Button Content="Save" Width="80" Margin="5" Click="Save_Click" />
-                <Button Content="Chat" Width="80" Margin="5" Click="Chat_Click" />
+        <DockPanel Background="PeachPuff">
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Bottom" HorizontalAlignment="Center" Height="50" Background="PeachPuff" >
+                <Button Content="Back" Width="140" Margin="5" Click="Back_Click" FontSize="18" Background="LightYellow"/>
+                <Button Content="Train" Width="140" Margin="5" Click="Train_Click" FontSize="18" Background="LightYellow" />
+                <Button Content="Save" Width="140" Margin="5" Click="Save_Click" FontSize="18" Background="LightYellow" />
+                <Button Content="Chat" Width="140" Margin="5" Click="Chat_Click" FontSize="18" Background="LightYellow" />
             </StackPanel>
-            <Label x:Name="mainLabel" />
+
+            <Label x:Name="nameLabel" DockPanel.Dock="Top" Content="Name" FontSize="22" FontWeight="Bold" Margin="5" />
+
+            <DockPanel Margin="5" Background="Wheat">
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,10,0,0">
+                    <Label Content="Prediction count: " />
+                    <Label x:Name="cbPredictionCount" />
+                    <Rectangle Width="160" />
+                    <Label Content="Training time: " />
+                    <Label x:Name="cbTrainingTime" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Top">
+                    <Label Content="Accuracy: " />
+                    <Label x:Name="cbAccuracyCount" />
+                </StackPanel>
+                
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" x:Name="layersPanel" Margin="5" >
+                    
+                </StackPanel>
+            </DockPanel>
         </DockPanel>
     </Grid>
 </UserControl>

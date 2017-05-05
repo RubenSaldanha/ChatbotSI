@@ -8,23 +8,28 @@
              d:DesignHeight="500" d:DesignWidth="300">
     <Grid>
         <DockPanel>
-
-            <Button Content="Back" Margin="5" Click="Back_Click" DockPanel.Dock="Bottom" HorizontalAlignment="Stretch" />
-            <Button x:Name="trainButton" Content="Train" Click="Train_Click" DockPanel.Dock="Bottom" Height="50" Margin="5" />
+            <DockPanel DockPanel.Dock="Bottom" Height="50">
+                <Button Content="Back" Margin="3" Click="Back_Click" Width="80" FontSize="18" Background="LightYellow" DockPanel.Dock="Left" />
+                <Button x:Name="trainButton" Content="Start Train" Click="Train_Click" FontSize="18" Margin="2" Background="LightYellow" />
+            </DockPanel>
             <!--<Slider x:Name="timeSlider" Minimum ="5" Maximum="120" TickPlacement="BottomRight" TickFrequency="5" IsSnapToTickEnabled="True" HorizontalAlignment="Stretch" DockPanel.Dock="Bottom" Margin="5" /> -->
-            <StackPanel Orientation="Horizontal" DockPanel.Dock="Bottom" HorizontalAlignment="Center">
-                <Label Content="Training time" HorizontalAlignment="Center"/>
-                <!--<Label Content="{Binding ElementName=timeSlider, Path=Value, UpdateSourceTrigger=PropertyChanged}" />-->
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Bottom" HorizontalAlignment="Center" Width="190">
+                <Label Content="Training time" HorizontalAlignment="Center" FontSize="16"  />
+                <Label x:Name="trainingTime" Content="00:00:00" FontSize="16"  />
             </StackPanel>
 
             <Label Content="Available Corpus:" DockPanel.Dock="Top"/>
-            <ScrollViewer DockPanel.Dock="Top" Height="160">
-                <StackPanel DockPanel.Dock="Top" Orientation="Vertical" x:Name="corpusPanel"/>
-            </ScrollViewer>
-            
-            <ScrollViewer HorizontalContentAlignment="Center">
-                <Label x:Name="statusLabel" HorizontalAlignment="Stretch" />
-            </ScrollViewer>
+            <Border DockPanel.Dock="Top" BorderBrush="LightGray" BorderThickness="2">
+                <ScrollViewer Height="300">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Vertical" x:Name="corpusPanel" Background="Wheat" Margin="5"/>
+                </ScrollViewer>
+            </Border>
+
+            <Border  BorderBrush="LightGray" BorderThickness="2">
+                <ScrollViewer HorizontalContentAlignment="Center" Background="Wheat" x:Name="statusScroller">
+                    <TextBlock x:Name="statusText" HorizontalAlignment="Stretch" />
+                </ScrollViewer>
+            </Border>
         </DockPanel>
     </Grid>
 </UserControl>

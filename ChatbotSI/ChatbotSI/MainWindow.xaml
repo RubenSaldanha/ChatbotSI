@@ -6,12 +6,12 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ChatbotSI"
         mc:Ignorable="d"
-        Title="Chatbot" Height="450" Width="725">
+        Title="Chatbot" Height="600" Width="800">
     <Grid>
         <DockPanel >
-            <Label Content="Chatbot S.I." DockPanel.Dock="Top" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" FontSize="26" FontWeight="Bold" Background="DarkSlateGray" Foreground="White"/>
+            <Label Content="Chatbot S.I." DockPanel.Dock="Top" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" FontSize="26" FontWeight="Bold" Background="Salmon" Foreground="White"/>
 
-            <UserControl x:Name="mainControl" Background="LightBlue" />
+            <UserControl x:Name="mainControl" Background="PeachPuff" />
         </DockPanel>
     </Grid>
 </Window>

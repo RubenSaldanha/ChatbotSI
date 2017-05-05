@@ -41,6 +41,7 @@ namespace ChatbotSI
             symbols.Add(',');
             symbols.Add('!');
             symbols.Add('?');
+            symbols.Add('\'');
 
             //add numbers
             //for (int i = 0; i < 10; i++)
@@ -186,6 +187,7 @@ namespace ChatbotSI
             return text;
         }
 
+#warning word dictionary not ready
         public static void trs()
         {
             Dictionary<string, List<string>> dic = new Dictionary<string, List<string>>();

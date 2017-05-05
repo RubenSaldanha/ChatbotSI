@@ -53,7 +53,6 @@ namespace ChatbotSI
 
             //Load all files in current directory with specified termination
             string[] corpusFiles = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.txt");
-
             //Go over all chatbotFiles
             for (int i = 0; i < corpusFiles.Length; i++)
             {

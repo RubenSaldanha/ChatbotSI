@@ -72,6 +72,7 @@
     <Compile Include="Qaib\Couppy.cs" />
     <Compile Include="Qaib\HybridStatePredictor.cs" />
     <Compile Include="Qaib\Qaib.cs" />
+    <Compile Include="Qaib\RestrictedStatePredictor.cs" />
     <Compile Include="Qaib\RNN.cs" />
     <Compile Include="Qaib\StatePredictor.cs" />
     <Compile Include="Qaib\SymbolCorpus.cs" />

@@ -6,28 +6,22 @@ using System.Threading.Tasks;
 
 namespace ChatbotSI
 {
-    //TODO serializable
+    [Serializable()]
     public class StatePredictor
     {
-        public int lastLeapCount;
-        public double lastLeapIntensity
-        {
-            get { return lastLeapCount / (double)table.Length; }
-        }
-
         public int trainingDepth;
 
         public int symbolSize;
         public int stateSize;
 
-        byte[] table;
-        short tableStride;
+        public byte[] table;
+        public short tableStride;
 
-        byte state;
+        public byte state;
 
         public int predictionCount;
         public int errorCount;
-        int[] stateMetrics;
+        public int[] stateMetrics;
 
         public float stateEntropy
         {
@@ -50,6 +44,10 @@ namespace ChatbotSI
             get { return 1f - errorCount / (float)predictionCount; }
         }
 
+        public StatePredictor()
+        {
+
+        }
         public StatePredictor(int symbolSize, int stateSize)
         {
             this.symbolSize = symbolSize;
@@ -63,8 +61,6 @@ namespace ChatbotSI
             //i0 , s0: p00 , s00
             //i0 , s1: p01 , s01
             //...
-
-            lastLeapCount = (int)(table.Length * 0.99f);
         }
 
         public void reset()
@@ -352,108 +348,6 @@ namespace ChatbotSI
             return stats;
         }
 
-        public void train(SymbolCorpus trainSet, int cycles)
-        {
-            Random rdm = new Random();
-
-            StatePredictor predictor = new StatePredictor(symbolSize, stateSize);
-            //Make copy of current
-            copyInto(this, predictor);
-
-            if (predictor.trainingDepth == 0)
-            {
-                randomOverride(predictor, rdm);
-
-                //Read and predict analysis
-                predictor.testPredict(trainSet);
-
-                //TODO Generate some more randoms and choose best - might not be needed since leap Intensity is so high at the beginning
-            }
-
-            //Initialize training variables
-            StatePredictor testTable = new StatePredictor(predictor.symbolSize, predictor.stateSize);
-            StatePredictor temp;
-
-            double leapIntensity = predictor.lastLeapIntensity;
-            for (int i = 0; i < cycles; i++)
-            {
-                //Mutation
-                leapOverride(testTable, predictor, rdm, leapIntensity);
-
-                //Read and predict analysis
-                testTable.testPredict(trainSet);
-
-                if (testTable.accuracy > predictor.accuracy)
-                {
-                    //Best predictor found
-
-                    //Soft change with memory for sucessful mutations intensity (x2 because of random average behaviour)
-                    leapIntensity = 0.8 * leapIntensity + 0.2 * (2 * testTable.lastLeapIntensity);
-
-                    if (leapIntensity > 0.9)
-                        leapIntensity = 0.9; //maximum allowed mutation intensity
-
-                    //Swap predictors for memory usage
-                    temp = predictor;
-                    predictor = testTable;
-                    testTable = temp;
-                }
-            }
-
-            copyInto(predictor, this);
-        }
-
-
-
-        public void saveToFile(string file)
-        {
-            //version, symbol size, state size, species depth
-            byte[] saveArray = new byte[1 + 4 + 4 + 4 + table.Length];
-
-            //version
-            saveArray[0] = 0;
-
-            //symbol size
-            byte[] bR;
-            bR = BitConverter.GetBytes(symbolSize);
-            bR.CopyTo(saveArray, 1);
-
-            //state size
-            bR = BitConverter.GetBytes(stateSize);
-            bR.CopyTo(saveArray, 5);
-
-            //species depth
-            bR = BitConverter.GetBytes(trainingDepth);
-            bR.CopyTo(saveArray, 9);
-
-            //Table
-            table.CopyTo(saveArray, 13);
-            System.IO.File.WriteAllBytes(file, saveArray);
-        }
-        public static StatePredictor loadFromFile(string file)
-        {
-            byte[] saveArray = System.IO.File.ReadAllBytes(file);
-
-            StatePredictor load = null;
-
-            //version check
-            if (saveArray[0] == 0)
-            {
-                int symbolSize = BitConverter.ToInt32(saveArray, 1);
-                int stateSize = BitConverter.ToInt32(saveArray, 5);
-                load = new StatePredictor(symbolSize, stateSize);
-                load.trainingDepth = BitConverter.ToInt32(saveArray, 9);
-                for (int i = 0; i < load.table.Length; i++)
-                    load.table[i] = saveArray[13 + i];
-            }
-            else
-            {
-                throw new Exception("Invalid file version.");
-            }
-
-            return load;
-        }
-
         public static void leapOverride(StatePredictor destination, StatePredictor original, Random rdm, double intensity)
         {
             destination.reset();
@@ -465,7 +359,6 @@ namespace ChatbotSI
             //Choose the number of changes to make to the original based on intensity
             //not very optimal
             int changeCount = rdm.Next(2 + (int)(original.table.Length * intensity));
-            destination.lastLeapCount = changeCount;
 
             //Make changes
             int index;
@@ -501,7 +394,6 @@ namespace ChatbotSI
         {
             original.table.CopyTo(destination.table, 0);
             destination.errorCount = original.errorCount;
-            destination.lastLeapCount = original.lastLeapCount;
             destination.predictionCount = original.predictionCount;
             destination.state = original.state;
             destination.stateSize = original.stateSize;
