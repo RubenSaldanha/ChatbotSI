@@ -3,31 +3,98 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
 
 namespace ChatbotSI
 {
     //TODO change to static constructor for mild optimization purposes
-    public static class Translator
+    [Serializable()]
+    [XmlInclude(typeof(CharToSymbolTranslator))]
+    public abstract class Translator
     {
-        static bool loaded = false;
+        public abstract int getSymbolCount();
 
-        static int _symbolCount;
-        public static int SymbolCount
+        public abstract byte[] textToSymbol(string input);
+        public SymbolDialogue textToSymbol(Corpus.Dialogue text)
         {
-            get
-            {
-                if (!loaded)
-                    Load();
+            SymbolDialogue symbols = new SymbolDialogue();
 
-                return _symbolCount;
+            symbols.sentences = new SymbolSentence[text.entrances.Length];
+            for (int i = 0; i < symbols.sentences.Length; i++)
+            {
+                symbols.sentences[i] = new SymbolSentence();
+                symbols.sentences[i].symbols = textToSymbol(text.entrances[i]);
             }
 
+            return symbols;
+        }
+        public SymbolCorpus textToSymbol(Corpus text)
+        {
+            SymbolCorpus symbols = new SymbolCorpus();
+
+            symbols.dialogues = new SymbolDialogue[text.dialogues.Length];
+            for (int i = 0; i < symbols.dialogues.Length; i++)
+                symbols.dialogues[i] = textToSymbol(text.dialogues[i]);
+
+            return symbols;
         }
 
-        static byte[] char2symbol;
-        static char[] symbol2char;
+        public abstract string symbolToText(byte[] symbols);
+        public Corpus.Dialogue symbolToText(SymbolDialogue symbols)
+        {
+            Corpus.Dialogue dialogue = new Corpus.Dialogue();
+            dialogue.entrances = new string[symbols.sentences.Length];
 
-        static void Load()
+            for (int i = 0; i < dialogue.entrances.Length; i++)
+            {
+                dialogue.entrances[i] = symbolToText(symbols.sentences[i].symbols);
+            }
+
+            return dialogue;
+        }
+        public Corpus symbolToText(SymbolCorpus symbols)
+        {
+            Corpus text = new Corpus();
+            text.dialogues = new Corpus.Dialogue[symbols.dialogues.Length];
+
+            for(int i=0;i<text.dialogues.Length;i++)
+            {
+                text.dialogues[i] = symbolToText(symbols.dialogues[i]);
+            }
+
+            return text;
+        }
+
+#warning word dictionary not ready
+        public static void trs()
+        {
+            Dictionary<string, List<string>> dic = new Dictionary<string, List<string>>();
+            List<string> synonims;
+
+            synonims = new List<string>();
+            synonims.Add("Hi");
+            synonims.Add("Hello");
+            synonims.Add("Hey");
+            dic.Add("Hi", synonims);
+
+            synonims = new List<string>();
+            synonims.Add("cat");
+            synonims.Add("feline");
+            dic.Add("cat", synonims);
+        }
+    }
+
+    [Serializable()]
+    public class CharToSymbolTranslator : Translator
+    {
+        public bool loaded = false;
+
+        public int _symbolCount;
+
+        public byte[] char2symbol;
+        public char[] symbol2char;
+
+        void Load()
         {
             //Create known alphabet of symbols
             List<char> symbols = new List<char>();
@@ -98,14 +165,24 @@ namespace ChatbotSI
             loaded = true;
         }
 
-        public static byte textToSymbol(char input)
+        public CharToSymbolTranslator()
+        {
+            Load();
+        }
+
+        public override int getSymbolCount()
+        {
+            return _symbolCount;
+        }
+
+        public byte textToSymbol(char input)
         {
             if (!loaded)
                 Load();
 
             return char2symbol[(byte)input];
         }
-        public static byte[] textToSymbol(string input)
+        public override byte[] textToSymbol(string input)
         {
             byte[] symbols = new byte[input.Length + 1];
             for (int i = 0; i < input.Length; i++)
@@ -115,31 +192,8 @@ namespace ChatbotSI
             symbols[symbols.Length - 1] = textToSymbol('_');
             return symbols;
         }
-        public static SymbolDialogue textToSymbol(Corpus.Dialogue text)
-        {
-            SymbolDialogue symbols = new SymbolDialogue();
 
-            symbols.sentences = new SymbolSentence[text.entrances.Length];
-            for (int i = 0; i < symbols.sentences.Length; i++)
-            {
-                symbols.sentences[i] = new SymbolSentence();
-                symbols.sentences[i].symbols = textToSymbol(text.entrances[i]);
-            }
-
-            return symbols;
-        }
-        public static SymbolCorpus textToSymbol(Corpus text)
-        {
-            SymbolCorpus symbols = new SymbolCorpus();
-
-            symbols.dialogues = new SymbolDialogue[text.dialogues.Length];
-            for (int i = 0; i < symbols.dialogues.Length; i++)
-                symbols.dialogues[i] = textToSymbol(text.dialogues[i]);
-
-            return symbols;
-        }
-
-        public static char symbolToText(byte symbol)
+        public char symbolToText(byte symbol)
         {
             if (!loaded)
                 Load();
@@ -148,9 +202,8 @@ namespace ChatbotSI
                 return symbol2char[symbol];
             else
                 return symbol2char[symbol2char.Length - 1];
-            return symbol2char[symbol];
         }
-        public static string symbolToText(byte[] symbols)
+        public override string symbolToText(byte[] symbols)
         {
             string output = "";
             for (int i = 0; i < symbols.Length; i++)
@@ -161,48 +214,6 @@ namespace ChatbotSI
             if (output[output.Length - 1] == '_')
                 output = output.Substring(0, output.Length - 1);
             return output;
-        }
-        public static Corpus.Dialogue symbolToText(SymbolDialogue symbols)
-        {
-            Corpus.Dialogue dialogue = new Corpus.Dialogue();
-            dialogue.entrances = new string[symbols.sentences.Length];
-
-            for (int i = 0; i < dialogue.entrances.Length; i++)
-            {
-                dialogue.entrances[i] = symbolToText(symbols.sentences[i].symbols);
-            }
-
-            return dialogue;
-        }
-        public static Corpus symbolToText(SymbolCorpus symbols)
-        {
-            Corpus text = new Corpus();
-            text.dialogues = new Corpus.Dialogue[symbols.dialogues.Length];
-
-            for(int i=0;i<text.dialogues.Length;i++)
-            {
-                text.dialogues[i] = symbolToText(symbols.dialogues[i]);
-            }
-
-            return text;
-        }
-
-#warning word dictionary not ready
-        public static void trs()
-        {
-            Dictionary<string, List<string>> dic = new Dictionary<string, List<string>>();
-            List<string> synonims;
-
-            synonims = new List<string>();
-            synonims.Add("Hi");
-            synonims.Add("Hello");
-            synonims.Add("Hey");
-            dic.Add("Hi", synonims);
-
-            synonims = new List<string>();
-            synonims.Add("cat");
-            synonims.Add("feline");
-            dic.Add("cat", synonims);
         }
     }
 }

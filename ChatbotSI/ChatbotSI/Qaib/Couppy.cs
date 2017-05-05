@@ -25,7 +25,6 @@ namespace ChatbotSI
 
         public RestrictedStatePredictor inputLayer;
 
-        [NonSerialized]
         public StatePredictor[] deepLayers;
 
 
@@ -34,6 +33,9 @@ namespace ChatbotSI
 
         //TODO: ResponseNet
 
+        public Translator translator;
+        
+        
         public int LayerCount
         {
             get { return deepLayers.Length + 1; }
@@ -43,10 +45,11 @@ namespace ChatbotSI
         {
 
         }
-        public Couppy(int[] layerSizes)
+        public Couppy(int[] layerSizes, Translator translator)
         {
             this.layerSizes = layerSizes;
-            int symbolSize = Translator.SymbolCount;
+            this.translator = translator;
+            int symbolSize = translator.getSymbolCount();
 
             if (symbolSize > 256)
                 throw new NotImplementedException("Invalid symbol size, must be between 1 and 256");
@@ -142,8 +145,9 @@ namespace ChatbotSI
             trainer.StopTrain();
         }
 
-        public byte[] response(SymbolDialogue dialogue)
+        public byte[] response(Corpus.Dialogue corpusDialogue)
         {
+            SymbolDialogue dialogue = translator.textToSymbol(corpusDialogue);
             SymbolSentence sentence;
             byte feed = 0;
             byte single;
@@ -228,10 +232,10 @@ namespace ChatbotSI
                 else
                     single = inputLayer.process(0);
 
+                output.Add(single);
+
                 if (single == 0)
                     break;
-
-                output.Add(single);
             }
 
             return output.ToArray();
@@ -384,7 +388,7 @@ namespace ChatbotSI
                         iState = iState / deepLayers[k].stateSize;
                     }
                 }
-                Console.WriteLine(stateString + " : " + Translator.symbolToText(output.ToArray()));
+                Console.WriteLine(stateString + " : " + translator.symbolToText(output.ToArray()));
             }
         }
 
@@ -402,6 +406,7 @@ namespace ChatbotSI
             original.layerSizes.CopyTo(destination.layerSizes, 0);
             destination.name = original.name;
             destination.trainingDepth = original.trainingDepth;
+            destination.translator = original.translator;
         }
 
         public static void leapOverride(Couppy original, Couppy destination, Random rdm, int intensity)
@@ -518,7 +523,7 @@ namespace ChatbotSI
                 int threadCount = 8;
                 training = true;
 
-                best = new Couppy(target.layerSizes);
+                best = new Couppy(target.layerSizes, target.translator);
                 Couppy.copyInto(target, best);
                 best.inputLayer.reset();
                 best.bake(trainSet);
@@ -537,7 +542,7 @@ namespace ChatbotSI
                     readLocks.Add(new object());
                     trainLocks.Add(new object());
                     //Create thread resource
-                    Couppy tester = new Couppy(best.layerSizes);
+                    Couppy tester = new Couppy(best.layerSizes,best.translator);
                     chatBots.Add(tester);
                     //Create and start thread
                     Thread tt = new Thread(ThreadTrain);

@@ -49,7 +49,7 @@ namespace ChatbotSI
             for (int i = 0; i < layerSizes.Length; i++)
                 layerSizes[i] = layerConfigs[i];
 
-            Couppy newChatbot = new Couppy(layerSizes);
+            Couppy newChatbot = new Couppy(layerSizes, new CharToSymbolTranslator());
             newChatbot.name = name;
             newChatbot.SaveToFile(name + ".cp");
             caller.Update();

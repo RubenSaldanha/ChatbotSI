@@ -53,8 +53,7 @@ namespace ChatbotSI
             }
 
             //Compute response
-            SymbolDialogue machineDialogue = Translator.textToSymbol(dialogue);
-            string response = Translator.symbolToText(bot.response(machineDialogue));
+            string response = bot.translator.symbolToText(bot.response(dialogue));
 
             //Add response to dialogue
             newEntrances = new string[dialogue.entrances.Length + 1];

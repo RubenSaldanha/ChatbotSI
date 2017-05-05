@@ -47,6 +47,9 @@ namespace ChatbotSI
 
             LoadCorpus();
 
+            //Translator waka;
+            XmlSerializer serializer = new XmlSerializer(typeof(Translator));
+
             PushControl(new ChatbotListView());
         }
 

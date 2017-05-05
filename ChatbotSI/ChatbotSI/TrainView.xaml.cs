@@ -128,7 +128,7 @@ namespace ChatbotSI
                     trainingTime.Background = new SolidColorBrush(Colors.Salmon);
                     trainingTime.Foreground = new SolidColorBrush(Colors.White);
                     trainButton.Content = "Stop Training";
-                    chatbot.StartTrain(Translator.textToSymbol(MainWindow.corpus[selectedIndex]));
+                    chatbot.StartTrain(chatbot.translator.textToSymbol(MainWindow.corpus[selectedIndex]));
                 }
             }
             else
