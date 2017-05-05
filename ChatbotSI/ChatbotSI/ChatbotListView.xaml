@@ -11,10 +11,12 @@
             <Label Content="Available Chatbots" DockPanel.Dock="Top" FontSize="16" />
 
             <Button Content="Create" DockPanel.Dock="Bottom" Click="CreateChatbot_Click" Margin="5" Height="40" FontSize="18" Width="160" Background="LightYellow" />
-            
-            <ScrollViewer>
-                <StackPanel x:Name="chatBotStackPanel" Orientation="Vertical" Background="Wheat" Margin="5"/>
-            </ScrollViewer>
+
+            <Border BorderBrush="LightGray" BorderThickness="2">
+                <ScrollViewer>
+                    <StackPanel x:Name="chatBotStackPanel" Orientation="Vertical" Background="Wheat" Margin="5"/>
+                </ScrollViewer>
+            </Border>
         </DockPanel>
     </Grid>
 </UserControl>

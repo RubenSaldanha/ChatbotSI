@@ -75,6 +75,11 @@ namespace ChatbotSI
             {
                 entrance = new Label();
                 entrance.Content = dialogue.entrances[i];
+                if (i % 2 == 0)
+                    entrance.Background = new SolidColorBrush(Colors.PeachPuff);
+                else
+                    entrance.Background = new SolidColorBrush(Colors.LightYellow);
+
                 dialoguePanel.Children.Add(entrance);
             }
 

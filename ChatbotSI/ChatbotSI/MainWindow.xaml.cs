@@ -35,6 +35,9 @@ namespace ChatbotSI
         }
         static List<UserControl> controlStack;
 
+        public delegate void ControlChangedHandler();
+        public static event ControlChangedHandler controlChanged;
+
         public MainWindow()
         {
             instance = this;
@@ -72,11 +75,14 @@ namespace ChatbotSI
                 MainControl.Content = controlStack[controlStack.Count - 1];
             else
                 Application.Current.Shutdown();
+
+            controlChanged?.Invoke();
         }
         public static void PushControl(UserControl control)
         {
             controlStack.Add(control);
             MainControl.Content = control;
+            controlChanged?.Invoke();
         }
 
     }

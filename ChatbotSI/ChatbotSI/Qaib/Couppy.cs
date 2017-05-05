@@ -422,22 +422,38 @@ namespace ChatbotSI
             int layer;
             int index;
             StatePredictor layerPredictor;
+            int dnaLength = original.getDnaLength();
             for (int i = 0; i < changeCount; i++)
             {
-                layer = rdm.Next(destination.layerSizes.Length);
+                index = rdm.Next(dnaLength);
+
+                layer = -1;
+                if (index < original.inputLayer.stateTransitionTable.Length)
+                    layer = 0;
+                else
+                {
+                    index -= original.inputLayer.stateTransitionTable.Length;
+                    for (int k = 0; k < original.deepLayers.Length; k++)
+                    {
+                        if (index < original.deepLayers[k].table.Length)
+                        {
+                            layer = k + 1;
+                        }
+                        else
+                        {
+                            index -= original.deepLayers[k].table.Length;
+                        }
+                    }
+                }
 
                 if(layer == 0)
                 {
-                    //Choose random table index for change
-                    index = rdm.Next(destination.inputLayer.stateTransitionTable.Length);
-
                     destination.inputLayer.stateTransitionTable[index] = (byte)rdm.Next(destination.inputLayer.stateSize); //New random state at index
                 }
                 else
                 {
                     //Choose random table index for change
                     layerPredictor = destination.deepLayers[layer - 1];
-                    index = rdm.Next(layerPredictor.table.Length);
 
                     //Check if index is prediction image or state image
                     if (index % 2 == 0)
@@ -648,6 +664,7 @@ namespace ChatbotSI
             public void StopTrain()
             {
                 training = false;
+
 
                 //Pass through all trainLocks to check cleared
                 for (int i = 0; i < trainLocks.Count; i++)

@@ -28,15 +28,10 @@ namespace ChatbotSI
             this.chatbot = chatbot;
 
             UpdateVisuals();
-            //LayoutUpdated += ChatbotView_LayoutUpdated;
+            MainWindow.controlChanged += UpdateVisuals;
         }
 
-        private void ChatbotView_LayoutUpdated(object sender, EventArgs e)
-        {
-            UpdateVisuals();
-        }
-
-        private void UpdateVisuals()
+        public void UpdateVisuals()
         {
 
             nameLabel.Content = chatbot.name;

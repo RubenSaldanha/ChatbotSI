@@ -31,6 +31,7 @@ namespace ChatbotSI
             chatbots = new List<Couppy>();
 
             Update();
+            MainWindow.controlChanged += Update;
         }
 
         public void Update()
