@@ -20,6 +20,11 @@
                 <Label Content="{Binding ElementName=layerSlider, Path=Value, UpdateSourceTrigger=PropertyChanged}" Width="30" VerticalContentAlignment="Center" FontSize="14" Margin="10,0,0,0"/>
             </StackPanel>
 
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="10" Height="40">
+                <Label Content="Translator: " HorizontalContentAlignment="Left" VerticalContentAlignment="Center" FontSize="14" />
+                <ComboBox  x:Name="translatorComboBox" Width="160" Margin="5" />
+            </StackPanel>
+
             <StackPanel Orientation="Horizontal" DockPanel.Dock="Bottom" HorizontalAlignment="Center" Height="50" Margin="0" >
                 <Button Content="Cancel" Margin="5" Width="120" Click="Cancel_Click" FontSize="18" Background="LightYellow"/>
                 <Button Content="Create" Margin="5" Width="120" Click="Create_Click" FontSize="18" Background="LightYellow" />

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -489,6 +490,7 @@ namespace ChatbotSI
             int[] trainSampleCount;
             double[] trainAccumulatedAccuracies;
 
+            List<string> threadStatus;
 
             int dnaLength;
 
@@ -522,6 +524,10 @@ namespace ChatbotSI
                 this.trainSet = trainSet;
                 int threadCount = 8;
                 training = true;
+
+                threadStatus = new List<string>();
+                for (int i = 0; i < threadCount; i++)
+                    threadStatus.Add("");
 
                 best = new Couppy(target.layerSizes, target.translator);
                 Couppy.copyInto(target, best);
@@ -571,31 +577,37 @@ namespace ChatbotSI
             private void ThreadTrain(object indexObj)
             {
                 int index = (int)indexObj;
-                Random rdm = new Random(index);
-                int currentTrainIndex = trainIntensity.Length - 1;
 
                 Monitor.Enter(trainLocks[index]);
 
-
+                Random rdm = new Random(index);
+                int currentTrainIndex = trainIntensity.Length - 1;
+                int currentIntensity = trainIntensity[currentTrainIndex];
                 int usedIntensity;
+                setThreadStatus(index, "Train start");
                 //while training is in place
                 while (training)
                 {
+
                     //Copy from best (if version control is in place, check version)
-                    usedIntensity = rdm.Next(trainIntensity[currentTrainIndex]) + 1; //Inclusive upper bound, exclusive lower bound
+                    usedIntensity = rdm.Next(currentIntensity) + 1; //Inclusive upper bound, exclusive lower bound
+                    setThreadStatus(index, "Waiting read to mutate...");
                     lock (readLocks[index])
                     {
+                        setThreadStatus(index, "Reading to mutate...");
                         Couppy.leapOverride(best, chatBots[index], rdm, usedIntensity);
                     }
 
+                    setThreadStatus(index, "Baking started.");
                     chatBots[index].bake(trainSet);
 
+                    setThreadStatus(index, "Waiting lock to check improvement...");
                     lock (checkLock)
                     {
                         //Increment used training intensity sampling count
                         for (int i = currentTrainIndex; i >= 0; i--)
                         {
-                            if (usedIntensity <= trainIntensity[i])
+                            if (currentIntensity <= trainIntensity[i])
                             {
                                 trainSampleCount[i]++;
                             }
@@ -611,7 +623,7 @@ namespace ChatbotSI
                             double improvement;
                             for (int i = currentTrainIndex; i >= 0; i--)
                             {
-                                if (usedIntensity <= trainIntensity[i])
+                                if (currentIntensity <= trainIntensity[i])
                                 {
                                     trainAccumulatedAccuracies[i] += chatBots[index].inputLayer.accuracy - best.inputLayer.accuracy;
                                 }
@@ -634,6 +646,7 @@ namespace ChatbotSI
                             }
                             //Change index to the best expected improvement
                             currentTrainIndex = bestIndex;
+                            currentIntensity = trainIntensity[currentTrainIndex];
 
                             //if (chatBots[index].trainingDepth % 10 == 0)
                             //    printTrainingIntensityStatus();
@@ -642,18 +655,23 @@ namespace ChatbotSI
                             //Lock all read locks
                             for (int i = 0; i < readLocks.Count; i++)
                             {
-                                Monitor.Enter(readLocks[i]);
+                                setThreadStatus(index, "Waiting reading locks " + i + " to mutate");
+                                Monitor.TryEnter(readLocks[i], -1);
                             }
 
                             //Copy into best
                             Couppy.copyInto(chatBots[index], best);
 
-                            TrainingUpdated?.Invoke(("Leap by thread " + index + " : " + best.inputLayer.getStats()));
+                            //This leaks
+                            Thread statusPusherThread = new Thread(PushStatus);
+                            statusPusherThread.Start("Leap by thread " + index + " : " + best.inputLayer.getStats());
+
                             //Unlock all read locks
                             for (int i = 0; i < readLocks.Count; i++)
                             {
                                 Monitor.Exit(readLocks[i]);
                             }
+                            setThreadStatus(index, "All reading locks unlocked");
                         }
                         else
                         {
@@ -664,6 +682,19 @@ namespace ChatbotSI
                 }
 
                 Monitor.Exit(trainLocks[index]);
+                setThreadStatus(index, "Thread exited");
+            }
+
+            //Mute calls to diagnose threads for performance issues when not on debug mode
+            [Conditional("DEBUG")]
+            private void setThreadStatus(int index, string status)
+            {
+                threadStatus[index] = status;
+            }
+
+            private void PushStatus(object status)
+            {
+                TrainingUpdated?.Invoke((string)status); //Breaks thread by locking up on main visual thread in case of training end
             }
 
             public void StopTrain()

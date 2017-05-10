@@ -32,6 +32,12 @@ namespace ChatbotSI
             for (int i = 0; i < layerSlider.Maximum; i++)
                 layerConfigs.Add(2);
 
+            List<string> availableTranslators = new List<string>();
+            availableTranslators.Add("CharToSymbol");
+            availableTranslators.Add("SylabToSymbol");
+            translatorComboBox.ItemsSource = availableTranslators;
+            translatorComboBox.SelectedIndex = 0;
+
             UpdateVisuals();
         }
 
@@ -49,7 +55,20 @@ namespace ChatbotSI
             for (int i = 0; i < layerSizes.Length; i++)
                 layerSizes[i] = layerConfigs[i];
 
-            Couppy newChatbot = new Couppy(layerSizes, new CharToSymbolTranslator());
+            Translator usedTranslator;
+            switch(translatorComboBox.SelectedIndex)
+            {
+                case 0:
+                    usedTranslator = new CharToSymbolTranslator();
+                    break;
+                case 1:
+                    usedTranslator = new SyllableToSymbolTranslator();
+                    break;
+                default:
+                    return;
+            }
+
+            Couppy newChatbot = new Couppy(layerSizes, usedTranslator);
             newChatbot.name = name;
             newChatbot.SaveToFile(name + ".cp");
             caller.Update();

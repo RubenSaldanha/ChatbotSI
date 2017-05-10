@@ -10,6 +10,7 @@ namespace ChatbotSI
     //TODO change to static constructor for mild optimization purposes
     [Serializable()]
     [XmlInclude(typeof(CharToSymbolTranslator))]
+    [XmlInclude(typeof(SyllableToSymbolTranslator))]
     public abstract class Translator
     {
         public abstract int getSymbolCount();
@@ -215,5 +216,345 @@ namespace ChatbotSI
                 output = output.Substring(0, output.Length - 1);
             return output;
         }
+    }
+
+    [Serializable()]
+    public class SyllableToSymbolTranslator : Translator
+    {
+        public SyllableToSymbolTranslator()
+        {
+
+        }
+        
+        public override int getSymbolCount()
+        {
+            throw new NotImplementedException();
+        }
+
+        public override byte[] textToSymbol(string input)
+        {
+            throw new NotImplementedException();
+
+            //Create symbol array with some length
+            byte[] symbols;
+
+            //TODO
+            //Fill symbol array with symbols, based on input
+
+            //Add last symbol as 0 = '_'
+            symbols[symbols.Length - 1] = 0;
+            return symbols;
+        }
+
+        public override string symbolToText(byte[] symbols)
+        {
+            throw new NotImplementedException();
+
+            string output = "";
+
+            //TODO
+            //Fill output string based on symbols array (Don't forget last symbol is '_' = 0 )
+
+            return output;
+        }
+
+
+
+        public static string normalize(string s)//Coverts a string to lower chars
+        {
+            s = s.ToLower();
+            return s;
+        }
+
+        public static string simplificator(string s)//Removes consecutive chars, except 'e' and 'o'
+        {
+            char aux = '@';
+            int pos = 0;
+
+            foreach (char c in s)
+            {
+                if ((aux == c) & (c != 'e') & (c != 'o'))
+                {
+                    s = s.Remove(pos, 1);
+                    pos--;
+                    //System.Console.WriteLine("Removed "+c);
+                }
+                aux = c;
+                pos++;
+
+            }
+            s = s + '.';
+            return s;
+        }
+
+        public static List<string> soundificator(string s)
+        {
+            string vowels = "weyuioa";
+            string trails = "rsflzcnm";
+            string silents = "h";
+            string consonants = "qtpdgjkxvb";
+            string alphabet = "qwertyuiopasdfghjklzxcvbnm";
+            string specials = " ";
+
+            List<string> sounds = new List<string>();
+            string temp = "";
+            int current_is;
+            int last_was = 0;//0 = undefined; 1 = vowel; 2 = trail; 3 = silent; 4 = consonant
+            bool has_vowel = false;
+
+            foreach (char c in s)
+            {
+                current_is = 0;
+                if (!alphabet.Contains(c)) current_is = 0;
+                if (vowels.Contains(c)) current_is = 1;
+                if (trails.Contains(c)) current_is = 2;
+                if (silents.Contains(c)) current_is = 3;
+                if (consonants.Contains(c)) current_is = 4;
+
+                switch (current_is)
+                {
+                    case (1):
+                        temp = temp + c;
+                        has_vowel = true;
+                        last_was = 1;
+                        break;
+                    case (2):
+                        switch (last_was)
+                        {
+                            case (1):
+                                temp = temp + c;
+                                break;
+                            case (2):
+                                if (has_vowel)
+                                {
+                                    sounds.Add(temp);
+                                    //System.Console.WriteLine("Added: [{0}]", temp);
+                                    has_vowel = false;
+                                    temp = "" + c;
+                                }
+                                else
+                                {
+                                    temp = temp + c;
+                                }
+                                break;
+                            case (3):
+                                temp = temp + c;
+                                break;
+                            case (4):
+                                temp = temp + c;
+                                break;
+                            case (0):
+                                temp = "" + c;
+                                break;
+                        }
+                        last_was = 2;
+                        break;
+                    case (3):
+                        temp = temp + c;
+                        last_was = 3;
+                        break;
+                    case (4):
+                        switch (last_was)
+                        {
+                            case (1):
+                                sounds.Add(temp);
+                                //System.Console.WriteLine("Added: [{0}]", temp);
+                                has_vowel = false;
+                                temp = "" + c;
+                                break;
+                            case (2):
+                                sounds.Add(temp);
+                                //System.Console.WriteLine("Added: [{0}]", temp);
+                                has_vowel = false;
+                                temp = "" + c;
+                                break;
+                            case (3):
+                                break;
+                            case (4):
+                                temp = temp + c;
+                                break;
+                            case (0):
+                                temp = "" + c;
+                                break;
+                        }
+                        last_was = 4;
+                        break;
+                    case (0):
+                        if (temp.Length > 0)
+                        {
+                            sounds.Add(temp);
+                            //System.Console.WriteLine("Added: [{0}]", temp);
+                            has_vowel = false;
+                        }
+                        if (specials.Contains(c))
+                        {
+                            sounds.Add("_e_");
+                            //System.Console.WriteLine("Added _e_");
+                        }
+                        temp = "";
+                        last_was = 0;
+                        break;
+                }
+                //System.Console.WriteLine("({0}, {1}) temp = {2}", last_was, c, temp);
+            }
+
+            return sounds;
+        }
+
+        public static bool vowel_check(string s)
+        {
+            string vowels = "weyuioa";
+            bool ans = false;
+            foreach (char c in s)
+            {
+                if (vowels.Contains(c))
+                {
+                    ans = true;
+                    break;
+                }
+            }
+            return ans;
+        }
+
+        public static List<string> solidificator(List<string> sounds)//Concatenates loose sounds without vowels into adjacent sides
+        {
+            int i = 0;
+            while (i < sounds.Count)
+            {
+                if (!vowel_check(sounds[i]))
+                {
+                    if ((i > 0) & (sounds[i - 1] != "_e_"))
+                    {
+                        sounds[i - 1] = sounds[i - 1] + sounds[i];
+                        sounds.RemoveAt(i);
+                        i--;
+                    }
+                    else
+                    {
+                        if (((i + 1) < sounds.Count) & (sounds[i + 1] != "_e_"))
+                        {
+                            sounds[i + 1] = sounds[i] + sounds[i + 1];
+                            sounds.RemoveAt(i);
+                        }
+                    }
+                }
+                i++;
+            }
+            return sounds;
+        }
+
+        public static bool separable_check(string s)
+        {
+            string vowels = "weyuioa";
+            bool ans = false;
+            bool v1 = false;
+            bool c1 = false;
+            bool v2 = false;
+
+            if (s.Length > 2)
+            {
+                foreach (char c in s)
+                {
+                    if (vowels.Contains(c))
+                    {
+                        if (!v1)
+                        {
+                            v1 = true;
+                        }
+                        else
+                        {
+                            if (c1)
+                            {
+                                v2 = true;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (v1 & (c != 'h'))
+                        {
+                            c1 = true;
+                        }
+                    }
+
+                    if (v1 & c1 & v2)
+                    {
+                        ans = true;
+                        return ans;
+                    }
+                }
+            }
+
+            return ans;
+        }
+
+        public static List<string> separator(List<string> sounds)//Concatenates loose sounds without vowels into adjacent sides
+        {
+            string vowels = "weyuioa";
+            int pos;
+            int i = 0;
+            bool vowel_found;
+
+            while (i < sounds.Count)
+            {
+                bool done = false;
+                while (!done)
+                {
+                    done = true;
+                    if (separable_check(sounds[i]))
+                    {
+                        done = false;
+                        pos = sounds[i].Length - 1;//
+                        vowel_found = false;
+                        foreach (char c in sounds[i].Reverse())
+                        {
+                            if (vowels.Contains(c))
+                            {
+                                pos--;
+                                vowel_found = true;
+                            }
+                            else
+                            {
+                                if (vowel_found)
+                                {
+                                    sounds.Insert(i + 1, sounds[i].Substring(pos));
+                                    sounds[i] = sounds[i].Substring(0, pos);
+                                    break;
+                                }
+                                else
+                                {
+                                    pos--;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                i++;
+            }
+
+            return sounds;
+        }
+
+        public static List<string> specialificator(List<string> sounds)//Replaces special symbols
+        {
+            var new_sounds = sounds.Select(s => s.Replace("_e_", " ")).ToList();
+            return new_sounds;
+        }
+
+        public static List<string> S5(string text)
+        {
+            List<string> sounds = new List<string>();
+
+            text = normalize(text);
+            text = simplificator(text);
+            sounds = soundificator(text);
+            sounds = solidificator(sounds);
+            sounds = separator(sounds);
+            sounds = specialificator(sounds);
+
+            return sounds;
+        }
+
     }
 }
