@@ -39,7 +39,7 @@ namespace ChatbotSI
             cbAccuracyCount.Content = chatbot.outputLayer.accuracy;
 
             layersPanel.Children.Clear();
-            for(int i=0;i<chatbot.layerSizes.Length;i++)
+            for(int i=0;i<chatbot.layerStateSizes.Length;i++)
             {
                 StackPanel column = new StackPanel();
                 column.Orientation = Orientation.Vertical;
@@ -51,7 +51,7 @@ namespace ChatbotSI
                 column.Children.Add(layerHeader);
 
                 Label stateEntropy = new Label();
-                stateEntropy.Content = "Entropy: " + ((i == chatbot.layerSizes.Length - 1) ? chatbot.outputLayer.stateEntropy : chatbot.deepLayers[i].stateEntropy);
+                stateEntropy.Content = "Entropy: " + ((i == chatbot.layerStateSizes.Length - 1) ? chatbot.outputLayer.stateEntropy : chatbot.deepLayers[i].stateEntropy);
                 stateEntropy.HorizontalAlignment = HorizontalAlignment.Center;
                 column.Children.Add(stateEntropy);
 
@@ -67,12 +67,12 @@ namespace ChatbotSI
                 entropies.Background = new SolidColorBrush(Colors.Wheat);
                 entropies.Width = 120;
 
-                int states = (i==0) ? chatbot.outputLayer.stateSize : chatbot.deepLayers[i - 1].stateSize;
+                int states = (i== chatbot.layerStateSizes.Length - 1) ? chatbot.outputLayer.stateSize : chatbot.deepLayers[i].stateSize;
                 for(int k=0;k<states;k++)
                 {
                     stateEntropy = new Label();
                     string stc = ("" + k).PadLeft(4) + " : ";
-                    if (i == chatbot.layerSizes.Length - 1)
+                    if (i == chatbot.layerStateSizes.Length - 1)
                         stc += chatbot.outputLayer.stateMetrics[k];
                     else
                         stc += chatbot.deepLayers[i].stateMetrics[k];

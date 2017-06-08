@@ -29,7 +29,8 @@ namespace ChatbotSI
         public StatePredictor[] deepLayers;
 
 
-        public int[] layerSizes;
+        public int[] layerStateSizes;
+        public int[] layerOutputSizes;
         //public bool training;
 
         //TODO: ResponseNet
@@ -46,29 +47,44 @@ namespace ChatbotSI
         {
 
         }
-        public Couppy(int[] layerSizes, Translator translator)
+        public Couppy(int[] layerStateSizes, int[] layerOutputSizes, Translator translator)
         {
-            this.layerSizes = layerSizes;
+            int layerCount = layerStateSizes.Length;
+            this.layerStateSizes = layerStateSizes;
+
+            if (layerOutputSizes.Length != layerCount)
+                throw new Exception("Invalid Couppy parameters, layer definitions must have same size.");
+            this.layerOutputSizes = layerOutputSizes;
+
             this.translator = translator;
             int symbolSize = translator.getSymbolCount();
+
+            if (symbolSize != layerOutputSizes[layerCount - 1])
+                throw new Exception("Invalid Couppy parameters, final layer output doesn't match translator symbol count.");
 
             if (symbolSize > 256)
                 throw new NotImplementedException("Invalid symbol size, must be between 1 and 256");
 
-            for(int i=0;i<layerSizes.Length - 1;i++)
-                if (layerSizes[i] > 256)
+            for(int i=0;i<layerStateSizes.Length - 1;i++)
+                if (layerStateSizes[i] > 256)
                     throw new NotImplementedException("Invalid state size, must be between 1 and 256");
 
-            if(layerSizes[layerSizes.Length - 1] > ushort.MaxValue)
+            if(layerStateSizes[layerStateSizes.Length - 1] > ushort.MaxValue)
                 throw new NotImplementedException("Invalid state size, must be between 1 and 256");
 
-            outputLayer = new RestrictedStatePredictor(symbolSize, layerSizes[layerSizes.Length - 1]);
-
-            if (layerSizes.Length > 1)
+            if (layerCount == 1)
             {
-                deepLayers = new StatePredictor[layerSizes.Length - 1];
-                for (int i = 0; i < layerSizes.Length - 1; i++)
-                    deepLayers[i] = new StatePredictor(symbolSize, layerSizes[i]);
+                outputLayer = new RestrictedStatePredictor(symbolSize, symbolSize, layerStateSizes[layerStateSizes.Length - 1]);
+            }
+            else
+            {
+                deepLayers = new StatePredictor[layerStateSizes.Length - 1];
+                deepLayers[0] = new StatePredictor(symbolSize, layerOutputSizes[0], layerStateSizes[0]);
+                for (int i = 1; i < layerStateSizes.Length - 1; i++)
+                {
+                    deepLayers[i] = new StatePredictor(layerOutputSizes[i - 1], layerOutputSizes[i], layerStateSizes[i]);
+                }
+                outputLayer = new RestrictedStatePredictor(layerOutputSizes[layerOutputSizes.Length - 2], layerOutputSizes[layerOutputSizes.Length - 1], layerStateSizes[layerStateSizes.Length - 1]);
             }
         }
 
@@ -96,7 +112,7 @@ namespace ChatbotSI
                     if (deepLayers != null)
                     {
                         for (int k = 0; k < deepLayers.Length; k++)
-                            feed = deepLayers[k].predict(feed);
+                            feed = deepLayers[k].process(feed);
                     }
 
                     outputLayer.bake(feed, sentence.symbols[0]);
@@ -109,7 +125,7 @@ namespace ChatbotSI
                         if (deepLayers != null)
                         {
                             for (int k = 0; k < deepLayers.Length; k++)
-                                feed = deepLayers[k].predict(feed);
+                                feed = deepLayers[k].process(feed);
                         }
 
                         outputLayer.bake(feed, sentence.symbols[l]);
@@ -153,7 +169,7 @@ namespace ChatbotSI
                 if (deepLayers != null)
                 {
                     for (int k = 0; k < deepLayers.Length; k++)
-                        feed = deepLayers[k].predict(feed);
+                        feed = deepLayers[k].process(feed);
                 }
 
                 outputLayer.process(feed);
@@ -165,7 +181,7 @@ namespace ChatbotSI
                     if (deepLayers != null)
                     {
                         for (int k = 0; k < deepLayers.Length; k++)
-                            feed = deepLayers[k].predict(feed);
+                            feed = deepLayers[k].process(feed);
                     }
 
                     outputLayer.process(feed);
@@ -181,7 +197,7 @@ namespace ChatbotSI
                 if (deepLayers != null)
                 {
                     for (int k = 0; k < deepLayers.Length; k++)
-                        feed = deepLayers[k].predict(feed);
+                        feed = deepLayers[k].process(feed);
                 }
 
                 feed = outputLayer.process(feed);
@@ -219,20 +235,20 @@ namespace ChatbotSI
             String description = "";
 
             description += "Layers :   ";
-            for (int i = 0; i < layerSizes.Length; i++)
-                description += "" + layerSizes[i] + "  ";
-            description += "  (" + layerSizes.Length + ")\n";
+            for (int i = 0; i < layerStateSizes.Length; i++)
+                description += "" + layerStateSizes[i] + "  ";
+            description += "  (" + layerStateSizes.Length + ")\n";
             description += "Predictions: " + outputLayer.predictionCount + "     Accuracy: " + outputLayer.accuracy;
             return description;
         }
 
         public int getDnaLength()
         {
-            int dnaLength = outputLayer.symbolSize * outputLayer.stateSize;
+            int dnaLength = outputLayer.inputSymbolSize * outputLayer.stateSize;
 
             if(deepLayers != null)
                 for (int i=0;i<deepLayers.Length;i++)
-                    dnaLength += deepLayers[i].symbolSize * deepLayers[i].stateSize * 2;
+                    dnaLength += deepLayers[i].inputSymbolSize * deepLayers[i].stateSize * 2;
 
 
             return dnaLength;
@@ -358,7 +374,8 @@ namespace ChatbotSI
             else
                 destination.deepLayers = null;
 
-            original.layerSizes.CopyTo(destination.layerSizes, 0);
+            original.layerStateSizes.CopyTo(destination.layerStateSizes, 0);
+            original.layerOutputSizes.CopyTo(destination.layerOutputSizes, 0);
             destination.name = original.name;
             destination.trainingDepth = original.trainingDepth;
             destination.translator = original.translator;
@@ -392,7 +409,7 @@ namespace ChatbotSI
 
                 layer = -1;
                 if (index < original.outputLayer.stateTransitionTable.Length)
-                    layer = destination.layerSizes.Length - 1;
+                    layer = destination.layerStateSizes.Length - 1;
                 else
                 {
                     index -= original.outputLayer.stateTransitionTable.Length;
@@ -410,7 +427,7 @@ namespace ChatbotSI
                     }
                 }
 
-                if(layer == destination.layerSizes.Length - 1)
+                if(layer == destination.layerStateSizes.Length - 1)
                 {
                     destination.outputLayer.stateTransitionTable[index] = (ushort)rdm.Next(destination.outputLayer.stateSize); //New random state at index
                 }
@@ -419,9 +436,9 @@ namespace ChatbotSI
                     //Choose random table index for change
                     layerPredictor = destination.deepLayers[layer];
 
-                    //Check if index is prediction image or state image
+                    //Check if index is output or state
                     if (index % 2 == 0)
-                        layerPredictor.table[index] = (byte)rdm.Next(layerPredictor.symbolSize); //New random prediction at index
+                        layerPredictor.table[index] = (byte)rdm.Next(layerPredictor.outputSymbolSize); //New random output at index
                     else
                         layerPredictor.table[index] = (byte)rdm.Next(layerPredictor.stateSize); //New random state at index
                 }
@@ -487,7 +504,7 @@ namespace ChatbotSI
                 for (int i = 0; i < threadCount; i++)
                     threadStatus.Add("");
 
-                best = new Couppy(target.layerSizes, target.translator);
+                best = new Couppy(target.layerStateSizes, target.layerOutputSizes, target.translator);
                 Couppy.copyInto(target, best);
                 best.outputLayer.reset();
                 best.bake(trainSet);
@@ -506,7 +523,7 @@ namespace ChatbotSI
                     readLocks.Add(new object());
                     trainLocks.Add(new object());
                     //Create thread resource
-                    Couppy tester = new Couppy(best.layerSizes,best.translator);
+                    Couppy tester = new Couppy(best.layerStateSizes, best.layerOutputSizes, best.translator);
                     chatBots.Add(tester);
                     //Create and start thread
                     Thread tt = new Thread(ThreadTrain);
