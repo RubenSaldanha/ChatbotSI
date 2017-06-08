@@ -121,7 +121,12 @@ namespace ChatbotSI
 
                 stateSlider = new Slider();
                 stateSlider.Minimum = 2;
-                stateSlider.Maximum = 256;
+
+                if (i == layerSlider.Value - 1)
+                    stateSlider.Maximum = 4096; // ushort.MaxValue;
+                else
+                    stateSlider.Maximum = byte.MaxValue;
+
                 stateSlider.Width = 512;
                 stateSlider.TickFrequency = 1;
                 stateSlider.IsSnapToTickEnabled = true;

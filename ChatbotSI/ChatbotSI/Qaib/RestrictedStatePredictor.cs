@@ -17,7 +17,7 @@ namespace ChatbotSI
 
         public byte[] predictionTable;
         public float[] predictionAccuracy;
-        public short tableStride;
+        public int tableStride;
 
         public int[][] predictionAccumulationTable;
 
@@ -30,10 +30,10 @@ namespace ChatbotSI
         public float[] inputOnlyPredictionAccuracy;
 
 
-        public byte[] stateTransitionTable;
-        public short stateStride;
+        public ushort[] stateTransitionTable;
+        public int stateStride;
 
-        public byte state;
+        public ushort state;
 
         public int predictionCount;
         public int errorCount;
@@ -72,15 +72,15 @@ namespace ChatbotSI
             //Create table with input(symbolSize , stateSize) each with 2 entries ( prediction , newState )
             predictionTable = new byte[symbolSize * stateSize];
             //Stride, bytes per symbol (states + (prediction , newState))
-            tableStride = (short)(stateSize); // stateSize times 2 output bytes
+            tableStride = stateSize; 
             stateMetrics = new int[stateSize];
             //i0 , s0: p00 , s00
             //i0 , s1: p01 , s01
             //...
 
             //Create state transition table based on what was seen and what should have been the prediction ( input, correct)
-            stateTransitionTable = new byte[symbolSize * stateSize];
-            stateStride = (short)stateSize;
+            stateTransitionTable = new ushort[symbolSize * stateSize];
+            stateStride = stateSize;
 
 
             //Help structures
@@ -369,7 +369,7 @@ namespace ChatbotSI
             ProcessResult result = new ProcessResult();
             result.hits = new byte[input.Length];
             result.predictions = new byte[input.Length];
-            result.states = new byte[input.Length];
+            result.states = new ushort[input.Length];
 
             //Make first prediction and store it, it doesn't have input (default 0)
             //state = 0;
@@ -445,7 +445,8 @@ namespace ChatbotSI
 
                     //predict corpus
                     sentenceResult = process(inputSentence.symbols);
-                    result.states.dialogues[i].sentences[j].symbols = sentenceResult.states;
+#warning process result not working
+                    //result.states.dialogues[i].sentences[j].symbols = sentenceResult.states;
                     result.hits.dialogues[i].sentences[j].symbols = sentenceResult.hits;
                     result.predictions.dialogues[i].sentences[j].symbols = sentenceResult.predictions;
                 }
@@ -473,60 +474,8 @@ namespace ChatbotSI
             return cascade(state, 128);
         }
 
-        //Predicts with given control states and selfmade predictions.  Returning predictions
-        public byte[] project(byte[] control)
-        {
-            byte[] output = new byte[control.Length];
-
-            state = control[0];
-            int index = (0 * tableStride + state);
-            output[0] = predictionTable[index];
-
-            for (int i = 1; i < output.Length; i++)
-            {
-                state = control[i];
-
-                index = (output[i - 1] * tableStride + state);
-                output[i] = predictionTable[index];
-            }
-
-            return output;
-        }
-        //Projects corpus
-        public SymbolCorpus project(SymbolCorpus control)
-        {
-            //Create same dimension output Corpus
-            SymbolCorpus outputCorpus = new SymbolCorpus();
-            outputCorpus.dialogues = new SymbolDialogue[control.dialogues.Length];
-
-            //Process
-            SymbolDialogue controlDialogue;
-            SymbolSentence controlSentence;
-            for (int i = 0; i < control.dialogues.Length; i++)
-            {
-                controlDialogue = control.dialogues[i];
-
-                //Create same dimension output dialogue
-                outputCorpus.dialogues[i] = new SymbolDialogue();
-                outputCorpus.dialogues[i].sentences = new SymbolSentence[control.dialogues[i].sentences.Length];
-
-                for (int j = 0; j < controlDialogue.sentences.Length; j++)
-                {
-                    controlSentence = controlDialogue.sentences[j];
-
-                    outputCorpus.dialogues[i].sentences[j] = new SymbolSentence();
-
-                    //project corpus, reset state per sentence
-                    state = 0;
-                    outputCorpus.dialogues[i].sentences[j].symbols = project(controlSentence.symbols);
-                }
-            }
-
-            return outputCorpus;
-        }
-
         //cascade from one state
-        public byte[] cascade(byte startState, int maxLength = 128)
+        public byte[] cascade(ushort startState, int maxLength = 128)
         {
             List<byte> output = new List<byte>();
             state = startState;
@@ -592,7 +541,7 @@ namespace ChatbotSI
         {
             public byte[] predictions;
             public byte[] hits;
-            public byte[] states;
+            public ushort[] states;
         }
         public class CorpusResult
         {
@@ -621,7 +570,7 @@ namespace ChatbotSI
                 index = rdm.Next(destination.stateTransitionTable.Length);
 
                 //Check if index is prediction image or state image
-                destination.stateTransitionTable[index] = (byte)rdm.Next(destination.stateSize); //New random state at index
+                destination.stateTransitionTable[index] = (ushort)rdm.Next(destination.stateSize); //New random state at index
             }
         }
         public static void randomOverride(RestrictedStatePredictor destination, Random rdm)
@@ -632,7 +581,7 @@ namespace ChatbotSI
 
             for (int i = 0; i < destination.stateTransitionTable.Length; i++)
             {
-                destination.stateTransitionTable[i] = (byte)rdm.Next(destination.stateSize); //New random state at index
+                destination.stateTransitionTable[i] = (ushort)rdm.Next(destination.stateSize); //New random state at index
             }
         }
 

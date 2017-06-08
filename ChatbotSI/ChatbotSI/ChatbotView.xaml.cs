@@ -51,7 +51,7 @@ namespace ChatbotSI
                 column.Children.Add(layerHeader);
 
                 Label stateEntropy = new Label();
-                stateEntropy.Content = "Entropy: " + ((i == 0) ? chatbot.outputLayer.stateEntropy : chatbot.deepLayers[i - 1].stateEntropy);
+                stateEntropy.Content = "Entropy: " + ((i == chatbot.layerSizes.Length - 1) ? chatbot.outputLayer.stateEntropy : chatbot.deepLayers[i].stateEntropy);
                 stateEntropy.HorizontalAlignment = HorizontalAlignment.Center;
                 column.Children.Add(stateEntropy);
 
@@ -72,10 +72,10 @@ namespace ChatbotSI
                 {
                     stateEntropy = new Label();
                     string stc = ("" + k).PadLeft(4) + " : ";
-                    if (i == 0)
+                    if (i == chatbot.layerSizes.Length - 1)
                         stc += chatbot.outputLayer.stateMetrics[k];
                     else
-                        stc += chatbot.deepLayers[i - 1].stateMetrics[k];
+                        stc += chatbot.deepLayers[i].stateMetrics[k];
                     stateEntropy.Content = stc;
                     entropies.Children.Add(stateEntropy);
                 }
